@@ -119,6 +119,33 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &29731151 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 9a88bd30d43e70545bc8cd8bfb7872d3, type: 3}
+  m_PrefabInstance: {fileID: 729890503}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &29731154
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 29731151}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2697cb051b657194382cc488b2e20491, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
+  OnHealthChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  OnTakeDamage:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDeath:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -456,7 +483,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9a88bd30d43e70545bc8cd8bfb7872d3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 29731154}
   m_SourcePrefab: {fileID: 100100000, guid: 9a88bd30d43e70545bc8cd8bfb7872d3, type: 3}
 --- !u!1 &832575517
 GameObject:
@@ -594,6 +624,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: bf9f423f002c8584ba956a41f9f95a77, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1400009172}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: bf9f423f002c8584ba956a41f9f95a77, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1400009173}
   m_SourcePrefab: {fileID: 100100000, guid: bf9f423f002c8584ba956a41f9f95a77, type: 3}
 --- !u!1 &1400009169 stripped
 GameObject:
@@ -615,6 +648,28 @@ MonoBehaviour:
   punchTriggerName: Punch
   punchCooldown:
     cooldownTime: 1
+--- !u!114 &1400009173
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1400009169}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2697cb051b657194382cc488b2e20491, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
+  OnHealthChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  OnTakeDamage:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDeath:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
