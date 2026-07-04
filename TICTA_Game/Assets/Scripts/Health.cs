@@ -20,9 +20,9 @@ public class Health : MonoBehaviour
     public bool IsDead => isDead;
     public float HealthPercentage => maxHealth > 0f ? currentHealth / maxHealth : 0f;
 
-    void Start()
+    void Awake()
     {
-        // กำหนดให้เลือดเริ่มต้นเต็มหลอด
+        // กำหนดให้เลือดเริ่มต้นเต็มหลอดใน Awake เพื่อให้พร้อมใช้งานก่อน Start ของสคริปต์อื่น
         currentHealth = maxHealth;
     }
 
