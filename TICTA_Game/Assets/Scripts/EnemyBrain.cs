@@ -43,6 +43,7 @@ public class EnemyBrain : MonoBehaviour
     private Animator animator;
     private Health health;
     private Rigidbody rb;
+    private PlayerMovement playerMovement; // อ้างอิงเพื่อตรวจ state ของผู้เล่น
     
     // สำหรับล็อคพิกัดยืนของศัตรูไม่ให้เลื่อนไหล
     private Vector3 spawnPosition;
@@ -65,6 +66,7 @@ public class EnemyBrain : MonoBehaviour
         health = GetComponent<Health>();
         enemyCollider = GetComponent<Collider>();
         rb = GetComponent<Rigidbody>();
+        playerMovement = FindFirstObjectByType<PlayerMovement>(); // หา PlayerMovement ในฉาก
 
         if (animator != null)
         {
@@ -347,16 +349,31 @@ public class EnemyBrain : MonoBehaviour
         }
 
         // รอตาม chargeDuration ที่ตั้งไว้ (ควบคุมเวลาชาร์จหลัก)
+        // *** ถ้า Player เข้าสู่ Dodge ระหว่างนี้ จะ interrupt และ Punch ทันที ***
         float chargeElapsed = 0f;
+        bool dodgeInterrupted = false;
         while (chargeElapsed < chargeDuration)
         {
             transform.position = spawnPosition;
             SmoothLookAtPlayer();
+
+            // ตรวจสอบว่า Player กำลัง Dodge อยู่หรือไม่
+            if (playerMovement != null && playerMovement.CurrentState == PlayerState.Dodge)
+            {
+                Debug.Log("[EnemyBrain] Player เข้าสู่ Dodge ระหว่างชาร์จ → Interrupt และ Punch ทันที!");
+                dodgeInterrupted = true;
+                break;
+            }
+
             chargeElapsed += Time.deltaTime;
             yield return null;
         }
 
-        // ชาร์จเสร็จ — เปลี่ยนไปลุยสเตทออกหมัด
+        // ชาร์จเสร็จ (ปกติ หรือ interrupt จาก Dodge) — เปลี่ยนไปลุยสเตทออกหมัด
+        if (dodgeInterrupted)
+        {
+            Debug.Log("[EnemyBrain] Punch ถูก Trigger จากการ Dodge ของ Player!");
+        }
         activeBehaviorCoroutine = null;
         TransitionToState(EnemyState.Punch);
     }
