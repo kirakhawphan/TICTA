@@ -8,6 +8,16 @@ public class Health : MonoBehaviour
     private float currentHealth;
     private bool isDead = false;
 
+    [Header("Invincibility Settings")]
+    [SerializeField] private bool isInvincible = false;
+
+    // Property สำหรับตรวจสอบหรือกำหนดสถานะอมตะ (I-Frame)
+    public bool IsInvincible
+    {
+        get => isInvincible;
+        set => isInvincible = value;
+    }
+
     [Header("Events")]
     // คอยส่งสัญญาณให้ระบบอื่นๆ รับรู้ (เช่น เล่นอนิเมชั่นโดนโจมตี หรือ อัปเดตเลือดบน UI)
     public UnityEvent<float> OnHealthChanged; // แจ้งเมื่อเลือดปัจจุบันเปลี่ยน (ส่งค่าเลือดปัจจุบันไป)
@@ -33,6 +43,12 @@ public class Health : MonoBehaviour
     public void TakeDamage(float damageAmount)
     {
         if (isDead) return;
+
+        if (isInvincible)
+        {
+            Debug.Log($"{gameObject.name} หลบได้ (อยู่ในสถานะอมตะ/I-Frame)!");
+            return;
+        }
 
         damageAmount = Mathf.Max(0f, damageAmount); // ป้องกันกรณีค่าติดลบ
         currentHealth -= damageAmount;

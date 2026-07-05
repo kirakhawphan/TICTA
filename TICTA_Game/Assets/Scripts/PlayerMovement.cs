@@ -7,10 +7,11 @@ public enum PlayerState
     Idle,
     Lunge,
     Punch,
-    Return
+    Return,
+    Dodge
 }
 
-// โครงสร้างข้อมูลสำหรับท่าโจมตีแต่ละท่า
+// โครงสร้างข้อมูลสำหรับท่าโจมตีหรือการกระทำแต่ละท่า
 [System.Serializable]
 public struct PlayerAttack
 {
@@ -28,6 +29,16 @@ public struct PlayerAttack
     public Cooldown cooldown; // คลาสสำหรับเก็บระบบคูลดาวน์แยกกันของแต่ละท่า
     public float damage; // พลังโจมตี
     public float damageDelay; // ดีเลย์ก่อนพลังชีวิตศัตรูลดลง (ให้ตรงกับจังหวะหมัด/เท้าโดนตัว)
+
+    [Header("Dodge Settings")]
+    public bool isDodge; // ระบุว่าเป็นท่าหลบหรือไม่ (จะได้รับ I-Frame อมตะระหว่างทำท่านี้)
+    public bool dodgeBackward; // หาก true จะหลบไปข้างหลัง, false = forward (เพิ่ม forward lunge)
+    public bool dodgeLeft; // จะหลบไปด้านซ้าย
+    public bool dodgeRight; // จะหลบไปด้านขวา
+    public float dodgeDistance; // ระยะการเคลื่อนที่ไปข้างหน้า/หลัง (หน่วย Unity)
+    public float dodgeLateralDistance; // ระยะการเคลื่อนที่ด้านข้าง (หน่วย Unity)
+    public float dodgeForwardLunge; // ระยะการพุ่งไปข้างหน้าเพิ่มเติม (0 = ไม่มี)
+    public float dodgeDuration; // เวลาที่ใช้สไลด์หลบ (วินาที)
 }
 
 public class PlayerMovement : MonoBehaviour
@@ -49,6 +60,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float stoppingOffset = 0.3f; // ระยะห่างจากขอบ Collider ของศัตรูที่จะไปหยุดยืน
     [SerializeField] private float lungeDuration = 0.15f; // เวลาพุ่งขาไป (วินาที)
     [SerializeField] private float returnDuration = 0.15f; // เวลาพุ่งกลับมาที่เดิม (วินาที)
+    [SerializeField] private float dodgeReturnDuration = 0.4f; // เวลาเดินทางกลับหลังทำท่าหลบ (ปรับแยกต่างหากจาก returnDuration ปกติ)
 
     [Header("Attacks Settings")]
     [SerializeField] private PlayerAttack[] attacks; // รายการท่าโจมตีทั้งหมด (เพิ่มลดจำนวนท่าได้อิสระจาก Inspector)
@@ -58,6 +70,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private bool logDamageShakeEvents = true;
 
     private Health health;
+    private IFrameController iframeController;
 
     // Property เพื่อให้ภายนอกเช็คสถานะของผู้เล่นได้
     public PlayerState CurrentState => currentState;
@@ -65,6 +78,7 @@ public class PlayerMovement : MonoBehaviour
     void Awake()
     {
         health = GetComponent<Health>();
+        iframeController = FindFirstObjectByType<IFrameController>();
     }
 
     void OnEnable()
@@ -117,6 +131,7 @@ public class PlayerMovement : MonoBehaviour
             case PlayerState.Lunge:
             case PlayerState.Punch:
             case PlayerState.Return:
+            case PlayerState.Dodge:
                 // ในสเตทเคลื่อนไหวเหล่านี้ จะมี Coroutine รับหน้าที่จัดการอยู่ ไม่ต้องทำอะไรใน Update
                 break;
         }
@@ -146,6 +161,8 @@ public class PlayerMovement : MonoBehaviour
                 break;
             case PlayerState.Return:
                 break;
+            case PlayerState.Dodge:
+                break;
         }
     }
 
@@ -160,6 +177,8 @@ public class PlayerMovement : MonoBehaviour
             case PlayerState.Punch:
                 break;
             case PlayerState.Return:
+                break;
+            case PlayerState.Dodge:
                 break;
         }
     }
@@ -202,26 +221,34 @@ public class PlayerMovement : MonoBehaviour
     {
         if (attack.cooldown.IsReady)
         {
-            // ค้นหาศัตรูตัวเดียวในฉาก
             Transform targetEnemy = FindEnemy();
 
-            if (targetEnemy != null)
+            if (attack.isDodge)
             {
-                float dist = Vector3.Distance(spawnPosition, targetEnemy.position);
-                Debug.Log($"[Debug] พบศัตรู: {targetEnemy.name} | ระยะห่างจริง: {dist:F2} | ออกท่า: {attack.attackName}");
-                
-                // เริ่มคอรันทีนการพุ่งโจมตีโดยส่งโครงสร้างข้อมูลท่านี้เข้าไปประมวลผล
-                StartCoroutine(LungeAndReturnCoroutine(targetEnemy, attack));
+                Debug.Log($"[Debug] ออกท่าหลบ: {attack.attackName}");
+                StartCoroutine(DodgeCoroutine(targetEnemy, attack));
             }
             else
             {
-                // หากไม่พบศัตรู ให้ปล่อยท่าโจมตีอยู่กับที่ตามปกติ
-                TransitionToState(PlayerState.Punch);
-                animator.SetTrigger(attack.triggerName);
-                attack.cooldown.StartCooldown();
-                
-                StartCoroutine(StationaryPunchCoroutine(attack.triggerName, attack.animStateName));
-                Debug.LogError($"[Debug] ไม่พบศัตรูในฉาก! (ปล่อยท่า {attack.attackName} อยู่กับที่)");
+                // ค้นหาศัตรูตัวเดียวในฉาก
+                if (targetEnemy != null)
+                {
+                    float dist = Vector3.Distance(spawnPosition, targetEnemy.position);
+                    Debug.Log($"[Debug] พบศัตรู: {targetEnemy.name} | ระยะห่างจริง: {dist:F2} | ออกท่า: {attack.attackName}");
+                    
+                    // เริ่มคอรันทีนการพุ่งโจมตีโดยส่งโครงสร้างข้อมูลท่านี้เข้าไปประมวลผล
+                    StartCoroutine(LungeAndReturnCoroutine(targetEnemy, attack));
+                }
+                else
+                {
+                    // หากไม่พบศัตรู ให้ปล่อยท่าโจมตีอยู่กับที่ตามปกติ
+                    TransitionToState(PlayerState.Punch);
+                    animator.SetTrigger(attack.triggerName);
+                    attack.cooldown.StartCooldown();
+                    
+                    StartCoroutine(StationaryPunchCoroutine(attack.triggerName, attack.animStateName));
+                    Debug.LogError($"[Debug] ไม่พบศัตรูในฉาก! (ปล่อยท่า {attack.attackName} อยู่กับที่)");
+                }
             }
         }
         else
@@ -379,6 +406,145 @@ public class PlayerMovement : MonoBehaviour
             currentPos.y = spawnPosition.y; // ล็อคแกน Y
             transform.position = currentPos;
             yield return null;
+        }
+
+        // 4. สิ้นสุดการทำงาน กลับสู่สเตท Idle
+        TransitionToState(PlayerState.Idle);
+    }
+
+    /// <summary>
+    /// คอรันทีนควบคุมท่าหลบ: สไลด์ถอยหลังพร้อมเปิด I-Frame อมตะ -> เล่นอนิเมชันหลบ -> สไลด์กลับมาที่เดิม
+    /// </summary>
+    private IEnumerator DodgeCoroutine(Transform target, PlayerAttack attack)
+    {
+        // 1. เข้าสู่สถานะ Dodge
+        TransitionToState(PlayerState.Dodge);
+
+        // เปิดใช้งาน I-Frame (อมตะ)
+        if (iframeController != null)
+        {
+            iframeController.SetInvincible(true);
+        }
+        else if (health != null)
+        {
+            health.IsInvincible = true;
+        }
+
+        animator.SetTrigger(attack.triggerName);
+        attack.cooldown.StartCooldown();
+
+        // รอ 1 เฟรมให้ trigger ถูก consume แล้วรีเซ็ตทิ้ง ป้องกัน trigger ค้าง
+        yield return null;
+        animator.ResetTrigger(attack.triggerName);
+
+        // คำนวณทิศทางหันหน้าเข้าหาศัตรู
+        Vector3 direction = transform.forward;
+        if (target != null)
+        {
+            direction = (target.position - spawnPosition).normalized;
+        }
+        direction.y = 0; // ล็อคแกน Y
+
+        if (direction != Vector3.zero)
+        {
+            transform.rotation = Quaternion.LookRotation(direction);
+        }
+
+        // Compute dodge target based on configured directions
+        Vector3 dodgeTargetPosition = spawnPosition;
+        Vector3 offset = Vector3.zero;
+
+        // Forward/backward distance
+        if (attack.dodgeDistance > 0f)
+        {
+            // Use backward if dodgeBackward is true, otherwise forward
+            if (attack.dodgeBackward)
+                offset -= direction * attack.dodgeDistance;
+            else
+                offset += direction * attack.dodgeDistance;
+        }
+
+        // Additional forward lunge
+        if (attack.dodgeForwardLunge > 0f)
+        {
+            offset += direction * attack.dodgeForwardLunge;
+        }
+
+        // Lateral movement
+        if (attack.dodgeLateralDistance > 0f)
+        {
+            if (attack.dodgeLeft)
+                offset -= transform.right * attack.dodgeLateralDistance;
+            else if (attack.dodgeRight)
+                offset += transform.right * attack.dodgeLateralDistance;
+        }
+
+        // Apply offset
+        dodgeTargetPosition += offset;
+        dodgeTargetPosition.y = spawnPosition.y;
+
+        // สไลด์หลบไปยังพิกัด dodgeTargetPosition (ใช้ Lerp ให้เคลื่อนที่ smooth แทนการวาปทันที)
+        float elapsed = 0f;
+        Vector3 startPos = transform.position;
+        if (attack.dodgeDuration > 0f)
+        {
+            while (elapsed < attack.dodgeDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / attack.dodgeDuration;
+                Vector3 currentPos = Vector3.Lerp(startPos, dodgeTargetPosition, t);
+                currentPos.y = spawnPosition.y;
+                transform.position = currentPos;
+                yield return null;
+            }
+            // snap ให้ตรงพิกัดเป๊ะหลัง loop จบ
+            transform.position = dodgeTargetPosition;
+        }
+        else
+        {
+            // ไม่มี duration → วาปทันที (fallback)
+            transform.position = dodgeTargetPosition;
+        }
+
+        // รอจนกว่า Animator จะเข้าสู่ state อนิเมชันหลบ
+        while (!animator.GetCurrentAnimatorStateInfo(0).IsName(attack.animStateName))
+        {
+            yield return null;
+        }
+
+        // รอจนกว่าจะอนิเมชันหลบจะเล่นเสร็จสิ้น (ออกจาก state)
+        while (animator.GetCurrentAnimatorStateInfo(0).IsName(attack.animStateName))
+        {
+            yield return null;
+        }
+
+        // 3. ทรานซิชันเข้าสู่สเตทเดินทางกลับ (Return)
+        TransitionToState(PlayerState.Return);
+        elapsed = 0f;
+        Vector3 reachedPosition = transform.position;
+        reachedPosition.y = spawnPosition.y;
+
+        // ใช้ dodgeReturnDuration แยกจาก returnDuration ปกติ เพื่อปรับความเร็วกลับหลัง dodge ได้อิสระ
+        float activeReturnDuration = dodgeReturnDuration > 0f ? dodgeReturnDuration : returnDuration;
+        while (elapsed < activeReturnDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / activeReturnDuration;
+            Vector3 currentPos = Vector3.Lerp(reachedPosition, spawnPosition, t);
+            currentPos.y = spawnPosition.y; // ล็อคแกน Y
+            transform.position = currentPos;
+            yield return null;
+        }
+        transform.position = spawnPosition;
+
+        // ปิดการใช้งาน I-Frame (อมตะ) เมื่อทำท่าหลบและกลับมาเสร็จสมบูรณ์
+        if (iframeController != null)
+        {
+            iframeController.SetInvincible(false);
+        }
+        else if (health != null)
+        {
+            health.IsInvincible = false;
         }
 
         // 4. สิ้นสุดการทำงาน กลับสู่สเตท Idle
