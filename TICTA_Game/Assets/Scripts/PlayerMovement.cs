@@ -53,8 +53,35 @@ public class PlayerMovement : MonoBehaviour
     [Header("Attacks Settings")]
     [SerializeField] private PlayerAttack[] attacks; // รายการท่าโจมตีทั้งหมด (เพิ่มลดจำนวนท่าได้อิสระจาก Inspector)
 
+    [Header("Camera Feedback")]
+    [SerializeField] private CameraShakeProfile damageShakeProfile = new CameraShakeProfile();
+    [SerializeField] private bool logDamageShakeEvents = true;
+
+    private Health health;
+
     // Property เพื่อให้ภายนอกเช็คสถานะของผู้เล่นได้
     public PlayerState CurrentState => currentState;
+
+    void Awake()
+    {
+        health = GetComponent<Health>();
+    }
+
+    void OnEnable()
+    {
+        if (health != null)
+        {
+            health.OnTakeDamage.AddListener(HandleTakeDamage);
+        }
+    }
+
+    void OnDisable()
+    {
+        if (health != null)
+        {
+            health.OnTakeDamage.RemoveListener(HandleTakeDamage);
+        }
+    }
 
     void Start()
     {
@@ -325,6 +352,7 @@ public class PlayerMovement : MonoBehaviour
         if (enemyHealth != null)
         {
             enemyHealth.TakeDamage(attack.damage);
+            PlayDamageCameraShake(attack.damage, $"hit {target.name} with {attack.attackName}");
         }
         else
         {
@@ -379,6 +407,33 @@ public class PlayerMovement : MonoBehaviour
 
         // พลิกกลับมาเป็น Idle
         TransitionToState(PlayerState.Idle);
+    }
+
+    private void HandleTakeDamage(float damageAmount)
+    {
+        PlayDamageCameraShake(damageAmount, "player took damage");
+    }
+
+    private void PlayDamageCameraShake(float damageAmount, string context)
+    {
+        if (damageShakeProfile == null || !damageShakeProfile.IsValid)
+        {
+            Debug.LogWarning($"[PlayerMovement] Cannot play camera shake after {context}; damageShakeProfile is invalid.");
+            return;
+        }
+
+        if (CameraShake.Instance == null)
+        {
+            Debug.LogWarning($"[PlayerMovement] Cannot play camera shake after {context}; no CameraShake instance was found.");
+            return;
+        }
+
+        CameraShake.Instance.Shake(damageShakeProfile);
+
+        if (logDamageShakeEvents)
+        {
+            Debug.Log($"[PlayerMovement] Camera shake after {context}: damage={damageAmount}, duration={damageShakeProfile.Duration:F2}, magnitude={damageShakeProfile.Magnitude:F2}, rotation={damageShakeProfile.RotationMagnitude:F2}");
+        }
     }
 
     /// <summary>
