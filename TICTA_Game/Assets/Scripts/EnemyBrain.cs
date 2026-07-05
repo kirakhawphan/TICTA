@@ -349,22 +349,29 @@ public class EnemyBrain : MonoBehaviour
         }
 
         // รอตาม chargeDuration ที่ตั้งไว้ (ควบคุมเวลาชาร์จหลัก)
-        // *** ถ้า Player เข้าสู่ Dodge ระหว่างนี้ จะ interrupt และ Punch ทันที ***
+        // *** ตรวจ Rising Edge: Player เริ่ม Dodge ใหม่ระหว่างชาร์จเท่านั้น (ไม่นับถ้า Dodge มาก่อนหน้า) ***
         float chargeElapsed = 0f;
         bool dodgeInterrupted = false;
+
+        // บันทึก state ก่อนเข้าลูป เพื่อตรวจการเปลี่ยนแปลง (rising edge)
+        bool wasInDodge = playerMovement != null && playerMovement.CurrentState == PlayerState.Dodge;
+
         while (chargeElapsed < chargeDuration)
         {
             transform.position = spawnPosition;
             SmoothLookAtPlayer();
 
-            // ตรวจสอบว่า Player กำลัง Dodge อยู่หรือไม่
-            if (playerMovement != null && playerMovement.CurrentState == PlayerState.Dodge)
+            bool isInDodge = playerMovement != null && playerMovement.CurrentState == PlayerState.Dodge;
+
+            // ตรวจ rising edge: Player เพิ่ง *เข้า* Dodge (จาก non-Dodge → Dodge) ระหว่างชาร์จ
+            if (!wasInDodge && isInDodge)
             {
-                Debug.Log("[EnemyBrain] Player เข้าสู่ Dodge ระหว่างชาร์จ → Interrupt และ Punch ทันที!");
+                Debug.Log("[EnemyBrain] Player เริ่ม Dodge ใหม่ระหว่างชาร์จ → Interrupt และ Punch ทันที!");
                 dodgeInterrupted = true;
                 break;
             }
 
+            wasInDodge = isInDodge;
             chargeElapsed += Time.deltaTime;
             yield return null;
         }

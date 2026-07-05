@@ -68,6 +68,8 @@ public class PlayerMovement : MonoBehaviour
     [Header("Camera Feedback")]
     [SerializeField] private CameraShakeProfile damageShakeProfile = new CameraShakeProfile();
     [SerializeField] private bool logDamageShakeEvents = true;
+    [SerializeField] private CameraFovProfile dodgeFovProfile = new CameraFovProfile(); // FOV zoom-out ระหว่าง Dodge
+    [SerializeField] private CameraFovProfile punchFovProfile = new CameraFovProfile();  // FOV ตอนออกท่าโจมตี
 
     private Health health;
     private IFrameController iframeController;
@@ -359,6 +361,7 @@ public class PlayerMovement : MonoBehaviour
 
         // 2. ทรานซิชันเข้าสู่สเตทโจมตี (Punch)
         TransitionToState(PlayerState.Punch);
+        CameraFovEffect.PlayGlobal(punchFovProfile); // เล่น FOV effect ตอนออกหมัด
         animator.SetTrigger(attack.triggerName);
         attack.cooldown.StartCooldown();
 
@@ -429,6 +432,9 @@ public class PlayerMovement : MonoBehaviour
         {
             health.IsInvincible = true;
         }
+
+        // เล่น FOV zoom-out ตอนเริ่ม Dodge
+        CameraFovEffect.PlayGlobal(dodgeFovProfile);
 
         animator.SetTrigger(attack.triggerName);
         attack.cooldown.StartCooldown();
