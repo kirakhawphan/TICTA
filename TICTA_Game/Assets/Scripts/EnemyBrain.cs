@@ -26,7 +26,9 @@ public class EnemyBrain : MonoBehaviour
     [SerializeField] private string punchAnimStateName = "PunchR"; // ชื่อ State ของท่าต่อยใน Animator Controller
 
     [Header("Attack & Charge Settings")]
-    [SerializeField] private float chargeDuration = 0.8f; // เวลาในการชาร์จยืนนิ่งก่อนพุ่ง (วินาที)
+    [SerializeField][Min(0.01f)] private float chargeDuration = 1.5f; // ระยะเวลาชาร์จก่อนพุ่ง (วินาที)
+    [SerializeField][Min(0.01f)] private float chargeAnimSpeed = 1f; // ตัวคูณความเร็วอนิเมชันชาร์จ (ปรับท่าให้เร็ว/ช้าลง)
+    [SerializeField] private bool autoSyncChargeAnimSpeed = true; // คำนวณความเร็วอนิเมให้จบ 1 รอบพอดีกับ chargeDuration
     [SerializeField] private float attackDamage = 10f; // พลังโจมตี
     [SerializeField] private float damageDelay = 0.15f; // ดีเลย์ชกโดนตัว (วินาที)
     [SerializeField] private float attackCooldownDuration = 3f; // ระยะเวลาคูลดาวน์การโจมตี (วินาที)
@@ -34,6 +36,7 @@ public class EnemyBrain : MonoBehaviour
     
     [Header("Lunge Settings")]
     [SerializeField] private float stoppingOffset = 0.3f; // ระยะหยุดห่างจากขอบตัวผู้เล่น
+    [SerializeField] private float turnSpeed = 360f; // ความเร็วหมุนหันหน้าหาผู้เล่น (องศา/วินาที)
     [SerializeField] private float lungeDuration = 0.2f; // ความเร็วพุ่งชก (วินาที)
     [SerializeField] private float returnDuration = 0.2f; // ความเร็วพุ่งกลับ (วินาที)
 
@@ -96,6 +99,9 @@ public class EnemyBrain : MonoBehaviour
         spawnPosition = transform.position;
         spawnRotation = transform.rotation;
 
+        // เริ่มนับคูลดาวน์ตั้งแต่ต้นเกม เพื่อไม่ให้โจมตีทันที
+        nextAttackTime = Time.time + attackCooldownDuration;
+
         // เริ่มต้นให้อยู่ในสถานะ Idle
         TransitionToState(EnemyState.Idle);
     }
@@ -142,9 +148,10 @@ public class EnemyBrain : MonoBehaviour
                 break;
 
             case EnemyState.Charge:
-                // เล่นแอนิเมชันเตรียมชาร์จพลัง
+                // เล่นแอนิเมชันเตรียมชาร์จพลัง (ความเร็วตั้งใน ChargeBehaviorCoroutine)
                 if (animator != null)
                 {
+                    animator.ResetTrigger(punchTriggerName);
                     animator.SetTrigger(chargeTriggerName);
                 }
                 
@@ -218,6 +225,11 @@ public class EnemyBrain : MonoBehaviour
             case EnemyState.Idle:
                 break;
             case EnemyState.Charge:
+                // คืนค่าความเร็ว Animator กลับเป็นปกติ
+                if (animator != null)
+                {
+                    animator.speed = 1.0f;
+                }
                 UnfreezePhysics();
                 break;
             case EnemyState.Punch:
@@ -268,27 +280,47 @@ public class EnemyBrain : MonoBehaviour
         }
     }
 
+    // หมุนหันหน้าหาผู้เล่นแบบ smooth ทุกเฟรม (ใช้ turnSpeed องศา/วินาที)
+    private void SmoothLookAtPlayer()
+    {
+        Transform player = FindPlayer();
+        if (player == null) return;
+
+        Vector3 targetPos = player.position;
+        targetPos.y = transform.position.y; // แบนแกน Y
+        Vector3 dir = (targetPos - transform.position).normalized;
+        
+        if (dir == Vector3.zero) return;
+
+        Quaternion targetRot = Quaternion.LookRotation(dir);
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation, targetRot, turnSpeed * Time.deltaTime
+        );
+    }
+
     // คอร์รูทีนชาร์จพลัง — ล็อคตำแหน่งทุกเฟรมตลอดช่วงชาร์จ
     private IEnumerator ChargeBehaviorCoroutine()
     {
         FreezePhysics();
 
-        Debug.Log($"[EnemyBrain] เริ่มรัน ChargeBehaviorCoroutine. chargeAnimStateName='{chargeAnimStateName}', chargeDuration={chargeDuration}");
+        Debug.Log($"[EnemyBrain] เริ่มรัน ChargeBehaviorCoroutine. chargeDuration={chargeDuration}s, autoSync={autoSyncChargeAnimSpeed}, animSpeed={chargeAnimSpeed}");
 
         // รอ 1 เฟรมให้ trigger ใน Animator ทำงาน
         yield return null;
+
+        bool chargeAnimStarted = false;
 
         if (animator != null && !string.IsNullOrEmpty(chargeAnimStateName))
         {
             // รอจนกระทั่ง Animator เริ่มทำการทรานซิชัน หรือเข้าสู่ state การชาร์จโดยตรง
             float elapsed = 0f;
-            while (!animator.GetCurrentAnimatorStateInfo(0).IsName(chargeAnimStateName) && 
+            while (!animator.GetCurrentAnimatorStateInfo(0).IsName(chargeAnimStateName) &&
                    !animator.GetNextAnimatorStateInfo(0).IsName(chargeAnimStateName))
             {
                 transform.position = spawnPosition;
-                transform.rotation = spawnRotation;
+                SmoothLookAtPlayer();
                 elapsed += Time.deltaTime;
-                if (elapsed > 1.0f) // ตัวช่วยหลุดกรณีฉุกเฉิน (1 วินาที)
+                if (elapsed > 1.0f)
                 {
                     var curState = animator.GetCurrentAnimatorStateInfo(0);
                     Debug.LogWarning($"[EnemyBrain] รอเริ่มทรานซิชันเข้าสู่ Charge นานเกิน 1 วินาที! CurrentStateHash={curState.shortNameHash}");
@@ -297,65 +329,62 @@ public class EnemyBrain : MonoBehaviour
                 yield return null;
             }
 
-            // ตอนนี้ Animator เริ่มเปลี่ยนสเตทเข้าสู่ Charge แล้ว
-            // รอจนกระทั่งอนิเมชันชาร์จเล่นไปจนถึงอย่างน้อย 99% ของเวลาในสเตท
-            elapsed = 0f;
-            while (true)
+            chargeAnimStarted = animator.GetCurrentAnimatorStateInfo(0).IsName(chargeAnimStateName)
+                             || animator.GetNextAnimatorStateInfo(0).IsName(chargeAnimStateName);
+
+            if (chargeAnimStarted)
             {
-                transform.position = spawnPosition;
-                transform.rotation = spawnRotation;
-
-                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-                var nextStateInfo = animator.GetNextAnimatorStateInfo(0);
-
-                float progress = 0f;
-                bool inChargeState = false;
-
-                if (stateInfo.IsName(chargeAnimStateName))
-                {
-                    progress = stateInfo.normalizedTime;
-                    inChargeState = true;
-                }
-                else if (nextStateInfo.IsName(chargeAnimStateName))
-                {
-                    progress = nextStateInfo.normalizedTime;
-                    inChargeState = true;
-                }
-
-                // ถ้าไม่ได้อยู่ในสเตท Charge หรือความคืบหน้าของเวลารันอนิเมชันครบ 99% แล้ว ให้จบการรอ
-                if (!inChargeState || (progress % 1.0f) >= 0.99f)
-                {
-                    Debug.Log($"[EnemyBrain] ออกจากลูปการรอ Charge: inChargeState={inChargeState}, progress={progress:F2}");
-                    break;
-                }
-
-                elapsed += Time.deltaTime;
-                if (elapsed > 3.0f) // ตัวช่วยหลุดกรณีฉุกเฉิน (3 วินาที)
-                {
-                    Debug.LogWarning("[EnemyBrain] รอเล่นอนิเมชัน Charge ครบรอบนานเกิน 3 วินาที!");
-                    break;
-                }
-                yield return null;
+                ApplyChargeAnimSpeed();
+            }
+            else
+            {
+                Debug.LogWarning("[EnemyBrain] ไม่พบสเตท Charge ใน Animator — ใช้ chargeDuration อย่างเดียว");
             }
         }
         else
         {
-            Debug.Log("[EnemyBrain] ไม่ได้ระบุ Animator หรือ chargeAnimStateName ว่างเปล่า -> ใช้ระบบชาร์จแบบเวลาคงที่ (Fallback)");
-            // Fallback ใช้เวลาดีเลย์แบบคงที่
-            float elapsed = 0f;
-            while (elapsed < chargeDuration)
+            Debug.Log("[EnemyBrain] ไม่ได้ระบุ Animator หรือ chargeAnimStateName ว่างเปล่า -> ใช้ chargeDuration อย่างเดียว");
+        }
+
+        // รอตาม chargeDuration ที่ตั้งไว้ (ควบคุมเวลาชาร์จหลัก)
+        float chargeElapsed = 0f;
+        while (chargeElapsed < chargeDuration)
+        {
+            transform.position = spawnPosition;
+            SmoothLookAtPlayer();
+            chargeElapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        // ชาร์จเสร็จ — เปลี่ยนไปลุยสเตทออกหมัด
+        activeBehaviorCoroutine = null;
+        TransitionToState(EnemyState.Punch);
+    }
+
+    // ตั้งความเร็ว Animator ให้ท่าชาร์จสอดคล้องกับ chargeDuration
+    private void ApplyChargeAnimSpeed()
+    {
+        if (animator == null) return;
+
+        float appliedSpeed = chargeAnimSpeed;
+
+        if (autoSyncChargeAnimSpeed)
+        {
+            var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            if (!stateInfo.IsName(chargeAnimStateName))
             {
-                // ล็อคตำแหน่งทุกเฟรม กันถูกผลักขยับ
-                transform.position = spawnPosition;
-                transform.rotation = spawnRotation;
-                elapsed += Time.deltaTime;
-                yield return null;
+                stateInfo = animator.GetNextAnimatorStateInfo(0);
+            }
+
+            // stateInfo.length = ความยาวคลิป ÷ speed ของ state ใน Animator Controller
+            if (stateInfo.length > 0.001f)
+            {
+                appliedSpeed = (stateInfo.length / chargeDuration) * chargeAnimSpeed;
             }
         }
 
-        // ชาร์จเสร็จ เปลี่ยนไปลุยสเตทออกหมัด (Punch) ทันที
-        activeBehaviorCoroutine = null;
-        TransitionToState(EnemyState.Punch);
+        animator.speed = appliedSpeed;
+        Debug.Log($"[EnemyBrain] Charge anim speed = {appliedSpeed:F2} (duration={chargeDuration}s, multiplier={chargeAnimSpeed})");
     }
 
     // ฟังก์ชันช่วยหาจุดที่ใกล้ที่สุดบน Collider อย่างปลอดภัย (รองรับ CharacterController และป้องกันการโยน Exception)
@@ -404,6 +433,14 @@ public class EnemyBrain : MonoBehaviour
     // คอรันทีนการพุ่งโจมตีผู้เล่น (โลจิกเหมือนกับ Player)
     private IEnumerator LungeAttackCoroutine(Transform target)
     {
+        // ยิง Punch trigger ทันทีที่เข้า Punch — ให้ Animator เปลี่ยนจาก Charge ไป PunchR พร้อมกับพุ่ง
+        if (animator != null)
+        {
+            animator.SetTrigger(punchTriggerName);
+        }
+
+        yield return null; // รอ 1 เฟรมให้ trigger ใน Animator ทำงาน
+
         // คำนวณทิศทางและระยะหยุด
         Collider playerCollider = target.GetComponent<Collider>();
         CharacterController playerCC = target.GetComponent<CharacterController>();
@@ -475,7 +512,7 @@ public class EnemyBrain : MonoBehaviour
             stoppingPosition = spawnPosition;
         }
 
-        // หันหน้ามองผู้เล่นแล้วเริ่มสไลด์พุ่งไป
+        // หันหน้ามองผู้เล่นตรงๆ ก่อนเริ่มพุ่ง (ระหว่าง Charge หมุนหาผู้เล่นอยู่แล้ว)
         if (direction != Vector3.zero && stoppingPosition != spawnPosition)
         {
             transform.rotation = Quaternion.LookRotation(direction);
@@ -496,13 +533,7 @@ public class EnemyBrain : MonoBehaviour
 
         yield return null; // รอ 1 เฟรมให้ภาพ Render สนิท
 
-        // 2. ปล่อยแอนิเมชั่นต่อย
-        if (animator != null)
-        {
-            animator.SetTrigger(punchTriggerName);
-            Debug.Log($"[EnemyBrain] ตั้งค่า Punch trigger: {punchTriggerName}");
-        }
-
+        // 2. รอให้ Animator เข้าสู่ท่าต่อย (trigger ถูกยิงตอนเริ่ม Punch แล้ว)
         if (animator != null && !string.IsNullOrEmpty(punchAnimStateName))
         {
             // รอจนกระทั่ง Animator เริ่มทำการทรานซิชัน หรือเข้าสู่ state การต่อยโดยตรง
@@ -554,7 +585,7 @@ public class EnemyBrain : MonoBehaviour
                 }
 
                 // ถ้าไม่ได้อยู่ในสเตท Punch หรือความคืบหน้าของเวลารันอนิเมชันครบ 99% แล้ว ให้จบการรอ
-                if (!inPunchState || (progress % 1.0f) >= 0.99f)
+                if (!inPunchState || progress >= 0.99f)
                 {
                     break;
                 }
