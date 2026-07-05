@@ -1144,7 +1144,7 @@ MonoBehaviour:
   punchTriggerName: Punch
   chargeAnimStateName: Charge
   punchAnimStateName: PunchR
-  chargeDuration: 0.8
+  chargeDuration: 1.5
   attackDamage: 10
   damageDelay: 0.15
   attackCooldownDuration: 3

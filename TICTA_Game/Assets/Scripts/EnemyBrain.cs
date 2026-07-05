@@ -407,7 +407,10 @@ public class EnemyBrain : MonoBehaviour
         // คำนวณทิศทางและระยะหยุด
         Collider playerCollider = target.GetComponent<Collider>();
         CharacterController playerCC = target.GetComponent<CharacterController>();
-        Vector3 direction = (target.position - spawnPosition).normalized;
+        // คำนวณทิศทางและระยะหยุด (แบนบนแกน XZ เพื่อป้องกันความต่างระดับความสูงแกน Y)
+        Vector3 targetPos = target.position;
+        targetPos.y = spawnPosition.y;
+        Vector3 direction = (targetPos - spawnPosition).normalized;
         Vector3 stoppingPosition;
 
         // คำนวณขนาดความกว้าง (รัศมี) ของตัวศัตรูเอง
@@ -448,20 +451,20 @@ public class EnemyBrain : MonoBehaviour
             playerSizeOffset = playerCC.radius * Mathf.Max(target.localScale.x, target.localScale.z);
         }
 
-        // รวมระยะหยุด = รัศมีตัวเอง + รัศมีผู้เล่น + offset
-        float totalBuffer = selfSizeOffset + playerSizeOffset + stoppingOffset;
-
         if (playerCollider != null)
         {
             // หาขอบตัวผู้เล่นที่ใกล้ศัตรูที่สุดแบบปลอดภัย
             Vector3 closestPoint = GetClosestPoint(playerCollider, spawnPosition);
             closestPoint.y = spawnPosition.y;
+
+            // ในเมื่อได้จุดผิวของผู้เล่น (closestPoint) แล้ว ระยะหยุดถอยห่างออกมาจะเท่ากับ (ขนาดตัวศัตรู + offset)
+            float totalBuffer = selfSizeOffset + stoppingOffset;
             stoppingPosition = closestPoint - (direction * totalBuffer);
         }
         else
         {
-            Vector3 targetPos = target.position;
-            targetPos.y = spawnPosition.y;
+            // Fallback ในกรณีไม่มี Collider ใช้จุดศูนย์กลางผู้เล่น แล้วลบขนาดรัศมีผู้เล่นรวมไปด้วย
+            float totalBuffer = selfSizeOffset + playerSizeOffset + stoppingOffset;
             stoppingPosition = targetPos - (direction * totalBuffer);
         }
         stoppingPosition.y = spawnPosition.y;
