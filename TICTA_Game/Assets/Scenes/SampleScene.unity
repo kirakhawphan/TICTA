@@ -1140,6 +1140,18 @@ MonoBehaviour:
   currentState: 0
   stunDuration: 1
   stunTriggerName: Stun
+  chargeTriggerName: Charge
+  punchTriggerName: Punch
+  chargeAnimStateName: Charge
+  punchAnimStateName: PunchR
+  chargeDuration: 0.8
+  attackDamage: 10
+  damageDelay: 0.15
+  attackCooldownDuration: 3
+  detectionRange: 20
+  stoppingOffset: 0.3
+  lungeDuration: 0.2
+  returnDuration: 0.2
 --- !u!1001 &30190569
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -57678,6 +57690,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: bf9f423f002c8584ba956a41f9f95a77, type: 3}
       propertyPath: m_Name
       value: Funk
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: bf9f423f002c8584ba956a41f9f95a77, type: 3}
+      propertyPath: m_TagString
+      value: Player
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: bf9f423f002c8584ba956a41f9f95a77, type: 3}
       propertyPath: m_Avatar
