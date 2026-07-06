@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 using System.Collections;
 
 // กำหนด State ของ AI
@@ -31,7 +32,8 @@ public class EnemyBrain : MonoBehaviour
     [SerializeField] private bool autoSyncChargeAnimSpeed = true; // คำนวณความเร็วอนิเมให้จบ 1 รอบพอดีกับ chargeDuration
     [SerializeField] private float attackDamage = 10f; // พลังโจมตี
     [SerializeField] private float damageDelay = 0.15f; // ดีเลย์ชกโดนตัว (วินาที)
-    [SerializeField] private float attackCooldownDuration = 3f; // ระยะเวลาคูลดาวน์การโจมตี (วินาที)
+    [SerializeField, FormerlySerializedAs("attackCooldownDuration")][Min(0f)] private float attackCooldownMinDuration = 3f; // เวลาคูลดาวน์ต่ำสุดก่อนโจมตีรอบถัดไป (วินาที)
+    [SerializeField][Min(0f)] private float attackCooldownMaxDuration = 3f; // เวลาคูลดาวน์สูงสุดก่อนโจมตีรอบถัดไป (วินาที)
     [SerializeField] private float detectionRange = 15f; // ระยะตรวจจับผู้เล่น (หน่วย Unity)
     
     [Header("Lunge Settings")]
@@ -58,6 +60,24 @@ public class EnemyBrain : MonoBehaviour
 
     // Property เพื่อให้ภายนอกตรวจสอบ State ปัจจุบันได้
     public EnemyState CurrentState => currentState;
+
+    void OnValidate()
+    {
+        attackCooldownMinDuration = Mathf.Max(0f, attackCooldownMinDuration);
+        attackCooldownMaxDuration = Mathf.Max(attackCooldownMinDuration, attackCooldownMaxDuration);
+    }
+
+    private void ScheduleNextAttack()
+    {
+        nextAttackTime = Time.time + GetRandomAttackCooldownDuration();
+    }
+
+    private float GetRandomAttackCooldownDuration()
+    {
+        float minDuration = Mathf.Max(0f, attackCooldownMinDuration);
+        float maxDuration = Mathf.Max(minDuration, attackCooldownMaxDuration);
+        return Random.Range(minDuration, maxDuration);
+    }
 
     void Awake()
     {
@@ -102,7 +122,7 @@ public class EnemyBrain : MonoBehaviour
         spawnRotation = transform.rotation;
 
         // เริ่มนับคูลดาวน์ตั้งแต่ต้นเกม เพื่อไม่ให้โจมตีทันที
-        nextAttackTime = Time.time + attackCooldownDuration;
+        ScheduleNextAttack();
 
         // เริ่มต้นให้อยู่ในสถานะ Idle
         TransitionToState(EnemyState.Idle);
@@ -660,7 +680,7 @@ public class EnemyBrain : MonoBehaviour
         }
 
         // เซ็ตเวลาคูลดาวน์ก่อนจะโจมตีรอบใหม่ได้
-        nextAttackTime = Time.time + attackCooldownDuration;
+        ScheduleNextAttack();
 
         // กลับไปตั้งหลักที่ Idle
         activeBehaviorCoroutine = null;
@@ -675,8 +695,8 @@ public class EnemyBrain : MonoBehaviour
         // เมื่อฟื้นตัว ถ้ายังไม่ตาย ให้กลับไปเริ่มลูปที่ Idle
         if (health != null && !health.IsDead)
         {
-            // ตั้งเวลาให้ศัตรูยังไม่โจมตีทันทีหลังหายมึน (คูลดาวน์ใหม่ชั่วคราว)
-            nextAttackTime = Time.time + 1.0f; 
+            // ตั้งเวลาให้ศัตรูยังไม่โจมตีทันทีหลังหายมึน โดยใช้ช่วงสุ่มเดียวกับคูลดาวน์โจมตี
+            ScheduleNextAttack();
             activeBehaviorCoroutine = null;
             TransitionToState(EnemyState.Idle);
         }
@@ -689,4 +709,3 @@ public class EnemyBrain : MonoBehaviour
         return player != null ? player.transform : null;
     }
 }
-

@@ -1150,7 +1150,8 @@ MonoBehaviour:
   autoSyncChargeAnimSpeed: 0
   attackDamage: 10
   damageDelay: 0.15
-  attackCooldownDuration: 5
+  attackCooldownMinDuration: 5
+  attackCooldownMaxDuration: 10
   detectionRange: 20
   stoppingOffset: 0.3
   turnSpeed: 360
