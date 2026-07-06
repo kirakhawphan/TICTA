@@ -8,7 +8,8 @@ public enum PlayerState
     Lunge,
     Punch,
     Return,
-    Dodge
+    Dodge,
+    Stun
 }
 
 // โครงสร้างข้อมูลสำหรับท่าโจมตีหรือการกระทำแต่ละท่า
@@ -47,6 +48,10 @@ public class PlayerMovement : MonoBehaviour
     
     [Header("State Settings")]
     [SerializeField] private PlayerState currentState = PlayerState.Idle;
+
+    [Header("Stun Settings")]
+    [SerializeField][Min(0f)] private float stunDuration = 1.0f;
+    [SerializeField] private string stunTriggerName = "Stun";
     
     // ตัวแปรล็อกพิกัดเริ่มต้น เพื่อแก้ไขปัญหาตัวละครตำแหน่งไม่นิ่ง หรือเลื่อนไหล (Drift) เองจากอนิเมชั่น
     private Vector3 spawnPosition;
@@ -73,6 +78,7 @@ public class PlayerMovement : MonoBehaviour
 
     private Health health;
     private IFrameController iframeController;
+    private Coroutine stunCoroutine;
 
     // Property เพื่อให้ภายนอกเช็คสถานะของผู้เล่นได้
     public PlayerState CurrentState => currentState;
@@ -136,6 +142,9 @@ public class PlayerMovement : MonoBehaviour
             case PlayerState.Dodge:
                 // ในสเตทเคลื่อนไหวเหล่านี้ จะมี Coroutine รับหน้าที่จัดการอยู่ ไม่ต้องทำอะไรใน Update
                 break;
+            case PlayerState.Stun:
+                UpdateStunState();
+                break;
         }
     }
 
@@ -165,6 +174,16 @@ public class PlayerMovement : MonoBehaviour
                 break;
             case PlayerState.Dodge:
                 break;
+            case PlayerState.Stun:
+                transform.position = spawnPosition;
+                transform.rotation = spawnRotation;
+                ResetAttackTriggers();
+                if (animator != null && !string.IsNullOrEmpty(stunTriggerName))
+                {
+                    animator.SetTrigger(stunTriggerName);
+                }
+                stunCoroutine = StartCoroutine(StunTimerCoroutine());
+                break;
         }
     }
 
@@ -181,6 +200,17 @@ public class PlayerMovement : MonoBehaviour
             case PlayerState.Return:
                 break;
             case PlayerState.Dodge:
+                break;
+            case PlayerState.Stun:
+                if (stunCoroutine != null)
+                {
+                    StopCoroutine(stunCoroutine);
+                    stunCoroutine = null;
+                }
+                if (animator != null && !string.IsNullOrEmpty(stunTriggerName))
+                {
+                    animator.ResetTrigger(stunTriggerName);
+                }
                 break;
         }
     }
@@ -203,6 +233,12 @@ public class PlayerMovement : MonoBehaviour
                 break; // กดออกท่าได้ทีละ 1 ท่าใน 1 เฟรม
             }
         }
+    }
+
+    private void UpdateStunState()
+    {
+        transform.position = spawnPosition;
+        transform.rotation = spawnRotation;
     }
 
     // ฟังก์ชันช่วยดักจับว่ามีการกดอินพุตของท่าโจมตีนั้นๆ หรือไม่
@@ -584,6 +620,47 @@ public class PlayerMovement : MonoBehaviour
     private void HandleTakeDamage(float damageAmount)
     {
         PlayDamageCameraShake(damageAmount, "player took damage");
+
+        if (health != null && health.CurrentHealth <= 0f)
+        {
+            return;
+        }
+
+        StopAllCoroutines();
+        stunCoroutine = null;
+        TransitionToState(PlayerState.Stun);
+    }
+
+    private IEnumerator StunTimerCoroutine()
+    {
+        if (stunDuration > 0f)
+        {
+            yield return new WaitForSeconds(stunDuration);
+        }
+        else
+        {
+            yield return null;
+        }
+
+        stunCoroutine = null;
+        if (health == null || !health.IsDead)
+        {
+            TransitionToState(PlayerState.Idle);
+        }
+    }
+
+    private void ResetAttackTriggers()
+    {
+        if (animator == null || attacks == null) return;
+
+        for (int i = 0; i < attacks.Length; i++)
+        {
+            string triggerName = attacks[i].triggerName;
+            if (!string.IsNullOrEmpty(triggerName))
+            {
+                animator.ResetTrigger(triggerName);
+            }
+        }
     }
 
     private void PlayDamageCameraShake(float damageAmount, string context)

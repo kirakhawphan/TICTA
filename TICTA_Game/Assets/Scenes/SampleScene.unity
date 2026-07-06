@@ -14922,7 +14922,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0.05225055, y: -0, z: -0, w: 0.99863404}
-  m_LocalPosition: {x: -583.46, y: 24.6, z: 451.1}
+  m_LocalPosition: {x: -582.98, y: 24.6, z: 451.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -65327,6 +65327,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   currentState: 0
+  stunDuration: 1
+  stunTriggerName: Stun
   stoppingOffset: 0.3
   lungeDuration: 0.15
   returnDuration: 0.15
@@ -65357,23 +65359,6 @@ MonoBehaviour:
     cooldown:
       cooldownTime: 0
     damage: 5
-    damageDelay: 0.15
-    isDodge: 0
-    dodgeBackward: 0
-    dodgeLeft: 0
-    dodgeRight: 0
-    dodgeDistance: 0
-    dodgeLateralDistance: 0
-    dodgeForwardLunge: 0
-    dodgeDuration: 0
-  - attackName: ElbowR
-    keyboardKey: 43
-    useMouseLeftClick: 0
-    triggerName: ElbowR
-    animStateName: ElbowR
-    cooldown:
-      cooldownTime: 0
-    damage: 10
     damageDelay: 0.15
     isDodge: 0
     dodgeBackward: 0
@@ -65417,6 +65402,40 @@ MonoBehaviour:
     dodgeLateralDistance: 5
     dodgeForwardLunge: 0
     dodgeDuration: 0.5
+  - attackName: ElbowR
+    keyboardKey: 43
+    useMouseLeftClick: 0
+    triggerName: ElbowR
+    animStateName: ElbowR
+    cooldown:
+      cooldownTime: 0
+    damage: 10
+    damageDelay: 0.15
+    isDodge: 0
+    dodgeBackward: 0
+    dodgeLeft: 0
+    dodgeRight: 0
+    dodgeDistance: 0
+    dodgeLateralDistance: 0
+    dodgeForwardLunge: 0
+    dodgeDuration: 0
+  - attackName: ElbowL
+    keyboardKey: 44
+    useMouseLeftClick: 0
+    triggerName: ElbowL
+    animStateName: ElbowL
+    cooldown:
+      cooldownTime: 0
+    damage: 10
+    damageDelay: 0.15
+    isDodge: 0
+    dodgeBackward: 0
+    dodgeLeft: 0
+    dodgeRight: 0
+    dodgeDistance: 0
+    dodgeLateralDistance: 0
+    dodgeForwardLunge: 0
+    dodgeDuration: 0
   damageShakeProfile:
     duration: 0.2
     magnitude: 1.2
