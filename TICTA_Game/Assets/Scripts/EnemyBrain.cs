@@ -35,6 +35,27 @@ public class EnemyBrain : MonoBehaviour
     [SerializeField, FormerlySerializedAs("attackCooldownDuration")][Min(0f)] private float attackCooldownMinDuration = 3f; // เวลาคูลดาวน์ต่ำสุดก่อนโจมตีรอบถัดไป (วินาที)
     [SerializeField][Min(0f)] private float attackCooldownMaxDuration = 3f; // เวลาคูลดาวน์สูงสุดก่อนโจมตีรอบถัดไป (วินาที)
     [SerializeField] private float detectionRange = 15f; // ระยะตรวจจับผู้เล่น (หน่วย Unity)
+
+    [Header("Charge Effect Settings")]
+    [SerializeField] private bool enableChargeEffect = true;
+    [SerializeField] private GameObject chargeEffectPrefab;
+    [SerializeField] private Vector3 chargeEffectLocalOffset = Vector3.zero;
+    [SerializeField][Min(0.000001f)] private float chargeEffectScale = 1f;
+    [SerializeField][Min(0f)] private float chargeEffectStopDelay = 1.25f;
+    [SerializeField] private bool activateChargeEffectChildren = true;
+    [SerializeField] private bool logChargeEffectDebug = true;
+
+    [Header("Punch Effect Settings")]
+    [SerializeField] private GameObject punchEffectPrefab;
+    [SerializeField] private Transform punchEffectPoint;
+    [SerializeField] private Vector3 punchEffectLocalOffset = Vector3.zero;
+    [SerializeField] private Vector3 punchEffectRotationEuler = Vector3.zero;
+    [SerializeField][Min(0.000001f)] private float punchEffectScale = 1f;
+    [SerializeField][Min(0.01f)] private float punchEffectSpeed = 1f;
+    [SerializeField][Min(0.01f)] private float punchEffectDestroyDelay = 1.25f;
+    [SerializeField] private bool parentPunchEffectToPoint;
+    [SerializeField] private bool activatePunchEffectChildren = true;
+    [SerializeField] private bool logPunchEffectDebug = true;
     
     [Header("Lunge Settings")]
     [SerializeField] private float stoppingOffset = 0.3f; // ระยะหยุดห่างจากขอบตัวผู้เล่น
@@ -58,6 +79,9 @@ public class EnemyBrain : MonoBehaviour
     private Coroutine activeBehaviorCoroutine;
     private float nextAttackTime = 0f; // เก็บเวลาที่จะสามารถเริ่มโจมตีรอบถัดไปได้
     private bool wasKinematic; // เก็บค่า isKinematic เดิมก่อนล็อค
+    private GameObject activeChargeEffect;
+    private ParticleSystem[] activeChargeParticles;
+    private Animator[] activeChargeEffectAnimators;
 
     // Property เพื่อให้ภายนอกตรวจสอบ State ปัจจุบันได้
     public EnemyState CurrentState => currentState;
@@ -66,6 +90,11 @@ public class EnemyBrain : MonoBehaviour
     {
         attackCooldownMinDuration = Mathf.Max(0f, attackCooldownMinDuration);
         attackCooldownMaxDuration = Mathf.Max(attackCooldownMinDuration, attackCooldownMaxDuration);
+        chargeEffectScale = Mathf.Max(0.000001f, chargeEffectScale);
+        chargeEffectStopDelay = Mathf.Max(0f, chargeEffectStopDelay);
+        punchEffectScale = Mathf.Max(0.000001f, punchEffectScale);
+        punchEffectSpeed = Mathf.Max(0.01f, punchEffectSpeed);
+        punchEffectDestroyDelay = Mathf.Max(0.01f, punchEffectDestroyDelay);
     }
 
     private void ScheduleNextAttack()
@@ -116,6 +145,8 @@ public class EnemyBrain : MonoBehaviour
         {
             health.OnTakeDamage.RemoveListener(HandleTakeDamage);
         }
+
+        StopChargeEffect(true);
     }
 
     void Start()
@@ -179,6 +210,8 @@ public class EnemyBrain : MonoBehaviour
                     animator.ResetTrigger(punchTriggerName);
                     animator.SetTrigger(chargeTriggerName);
                 }
+
+                StartChargeEffect();
                 
                 // เริ่มคอรันทีนชาร์จพลังเตรียมโจมตี
                 activeBehaviorCoroutine = StartCoroutine(ChargeBehaviorCoroutine());
@@ -250,6 +283,8 @@ public class EnemyBrain : MonoBehaviour
             case EnemyState.Idle:
                 break;
             case EnemyState.Charge:
+                StopChargeEffect();
+
                 // คืนค่าความเร็ว Animator กลับเป็นปกติ
                 if (animator != null)
                 {
@@ -408,6 +443,155 @@ public class EnemyBrain : MonoBehaviour
         }
         activeBehaviorCoroutine = null;
         TransitionToState(EnemyState.Punch);
+    }
+
+    private void StartChargeEffect()
+    {
+        if (!enableChargeEffect)
+        {
+            return;
+        }
+
+        if (chargeEffectPrefab == null)
+        {
+            if (logChargeEffectDebug)
+            {
+                Debug.LogWarning("[EnemyBrain] Charge effect ไม่เล่น เพราะยังไม่ได้ใส่ chargeEffectPrefab ใน Inspector");
+            }
+            return;
+        }
+
+        StopChargeEffect(true);
+
+        activeChargeEffect = Instantiate(chargeEffectPrefab, transform);
+        activeChargeEffect.name = $"{chargeEffectPrefab.name} (Enemy Charge)";
+        activeChargeEffect.transform.localPosition = chargeEffectLocalOffset;
+        activeChargeEffect.transform.localRotation = Quaternion.identity;
+        activeChargeEffect.transform.localScale = chargeEffectPrefab.transform.localScale * chargeEffectScale;
+
+        if (activateChargeEffectChildren)
+        {
+            SetActiveRecursively(activeChargeEffect.transform, true);
+        }
+
+        activeChargeParticles = activeChargeEffect.GetComponentsInChildren<ParticleSystem>(true);
+        activeChargeEffectAnimators = activeChargeEffect.GetComponentsInChildren<Animator>(true);
+        activeChargeEffect.SetActive(true);
+
+        foreach (ParticleSystem particle in activeChargeParticles)
+        {
+            if (particle == null) continue;
+
+            GameObject particleObject = particle.gameObject;
+            if (!particleObject.activeSelf)
+            {
+                particleObject.SetActive(true);
+            }
+
+            particle.Clear(true);
+            particle.Play(true);
+        }
+
+        foreach (Animator effectAnimator in activeChargeEffectAnimators)
+        {
+            if (effectAnimator == null) continue;
+
+            if (!effectAnimator.gameObject.activeSelf)
+            {
+                effectAnimator.gameObject.SetActive(true);
+            }
+
+            effectAnimator.enabled = true;
+            effectAnimator.Rebind();
+            effectAnimator.Update(0f);
+        }
+
+        activeChargeEffect.BroadcastMessage("Play", SendMessageOptions.DontRequireReceiver);
+
+        if (logChargeEffectDebug)
+        {
+            Debug.Log($"[EnemyBrain] เล่น Charge effect: {activeChargeEffect.name} | ParticleSystems={activeChargeParticles.Length}, Animators={activeChargeEffectAnimators.Length}");
+        }
+    }
+
+    private void StopChargeEffect(bool immediate = false)
+    {
+        if (activeChargeEffect == null) return;
+
+        GameObject effectToStop = activeChargeEffect;
+        ParticleSystem[] particlesToStop = activeChargeParticles;
+        Animator[] animatorsToStop = activeChargeEffectAnimators;
+
+        activeChargeEffect = null;
+        activeChargeParticles = null;
+        activeChargeEffectAnimators = null;
+
+        if (immediate)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(effectToStop);
+            }
+            else
+            {
+                DestroyImmediate(effectToStop);
+            }
+            return;
+        }
+
+        effectToStop.transform.SetParent(null, true);
+
+        if (particlesToStop != null)
+        {
+            foreach (ParticleSystem particle in particlesToStop)
+            {
+                if (particle != null)
+                {
+                    particle.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                }
+            }
+        }
+
+        if (animatorsToStop != null)
+        {
+            foreach (Animator effectAnimator in animatorsToStop)
+            {
+                if (effectAnimator != null)
+                {
+                    effectAnimator.enabled = false;
+                }
+            }
+        }
+
+        effectToStop.BroadcastMessage("Stop", SendMessageOptions.DontRequireReceiver);
+
+        Destroy(effectToStop, chargeEffectStopDelay);
+    }
+
+    private void SetActiveRecursively(Transform target, bool isActive)
+    {
+        target.gameObject.SetActive(isActive);
+
+        foreach (Transform child in target)
+        {
+            SetActiveRecursively(child, isActive);
+        }
+    }
+
+    private void PlayPunchEffect()
+    {
+        PunchEffectPlayer.Play(
+            punchEffectPrefab,
+            punchEffectPoint,
+            transform,
+            punchEffectLocalOffset,
+            punchEffectRotationEuler,
+            punchEffectScale,
+            punchEffectSpeed,
+            punchEffectDestroyDelay,
+            parentPunchEffectToPoint,
+            activatePunchEffectChildren,
+            logPunchEffectDebug ? "EnemyBrain" : "");
     }
 
     // ตั้งความเร็ว Animator ให้ท่าชาร์จสอดคล้องกับ chargeDuration
@@ -605,6 +789,7 @@ public class EnemyBrain : MonoBehaviour
 
             // รอตามเวลาดีเลย์เพื่อให้หมัดเอื้อมไปถึงตัวผู้เล่น แล้วค่อยทำความเสียหาย
             yield return new WaitForSeconds(damageDelay);
+            PlayPunchEffect();
 
             Health playerHealth = target.GetComponent<Health>();
             if (playerHealth != null)
@@ -658,6 +843,7 @@ public class EnemyBrain : MonoBehaviour
             }
 
             yield return new WaitForSeconds(damageDelay);
+            PlayPunchEffect();
 
             Health playerHealth = target.GetComponent<Health>();
             if (playerHealth != null)

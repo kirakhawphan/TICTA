@@ -1153,6 +1153,23 @@ MonoBehaviour:
   attackCooldownMinDuration: 5
   attackCooldownMaxDuration: 10
   detectionRange: 20
+  enableChargeEffect: 1
+  chargeEffectPrefab: {fileID: 4657568342486856687, guid: 02ef8fc3163e8f143829bce35738c940, type: 3}
+  chargeEffectLocalOffset: {x: 0, y: 0.01, z: -0.01}
+  chargeEffectScale: 0.001
+  chargeEffectStopDelay: 1.25
+  activateChargeEffectChildren: 1
+  logChargeEffectDebug: 1
+  punchEffectPrefab: {fileID: 610486881889840316, guid: 8fdf69922a5544f46876e37527b96a6e, type: 3}
+  punchEffectPoint: {fileID: 0}
+  punchEffectLocalOffset: {x: 0, y: 0, z: 0}
+  punchEffectRotationEuler: {x: 0, y: 0, z: 0}
+  punchEffectScale: 1
+  punchEffectSpeed: 1
+  punchEffectDestroyDelay: 1.25
+  parentPunchEffectToPoint: 0
+  activatePunchEffectChildren: 1
+  logPunchEffectDebug: 1
   stoppingOffset: 0.3
   turnSpeed: 360
   lungeDuration: 0.2
@@ -54368,6 +54385,11 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6448171805470960658, guid: 6a9598db077c94d458cb31ba09a02fbd, type: 3}
   m_PrefabInstance: {fileID: 1825373456}
   m_PrefabAsset: {fileID: 0}
+--- !u!4 &1144065633 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -1293157592579415587, guid: bf9f423f002c8584ba956a41f9f95a77, type: 3}
+  m_PrefabInstance: {fileID: 1235711713}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1145642456
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -65361,6 +65383,15 @@ MonoBehaviour:
       cooldownTime: 0
     damage: 5
     damageDelay: 0.15
+    punchEffectPrefab: {fileID: 610486881889840316, guid: 8fdf69922a5544f46876e37527b96a6e, type: 3}
+    punchEffectPoint: {fileID: 1144065633}
+    punchEffectLocalOffset: {x: 0, y: 0, z: 0}
+    punchEffectRotationEuler: {x: 0, y: 0, z: 0}
+    punchEffectScale: 1
+    punchEffectSpeed: 2
+    punchEffectDestroyDelay: 1.25
+    parentPunchEffectToPoint: 0
+    activatePunchEffectChildren: 0
     isDodge: 0
     dodgeBackward: 0
     dodgeLeft: 0
@@ -65378,6 +65409,15 @@ MonoBehaviour:
       cooldownTime: 0
     damage: 5
     damageDelay: 0.15
+    punchEffectPrefab: {fileID: 610486881889840316, guid: 8fdf69922a5544f46876e37527b96a6e, type: 3}
+    punchEffectPoint: {fileID: 2054321068}
+    punchEffectLocalOffset: {x: 0, y: 0, z: 0}
+    punchEffectRotationEuler: {x: 0, y: 0, z: 0}
+    punchEffectScale: 1
+    punchEffectSpeed: 2
+    punchEffectDestroyDelay: 1.25
+    parentPunchEffectToPoint: 0
+    activatePunchEffectChildren: 0
     isDodge: 0
     dodgeBackward: 0
     dodgeLeft: 0
@@ -65395,6 +65435,15 @@ MonoBehaviour:
       cooldownTime: 0
     damage: 0
     damageDelay: 0
+    punchEffectPrefab: {fileID: 0}
+    punchEffectPoint: {fileID: 0}
+    punchEffectLocalOffset: {x: 0, y: 0, z: 0}
+    punchEffectRotationEuler: {x: 0, y: 0, z: 0}
+    punchEffectScale: 0.000001
+    punchEffectSpeed: 1
+    punchEffectDestroyDelay: 1.25
+    parentPunchEffectToPoint: 0
+    activatePunchEffectChildren: 0
     isDodge: 1
     dodgeBackward: 0
     dodgeLeft: 0
@@ -65412,6 +65461,15 @@ MonoBehaviour:
       cooldownTime: 0
     damage: 0
     damageDelay: 0
+    punchEffectPrefab: {fileID: 0}
+    punchEffectPoint: {fileID: 0}
+    punchEffectLocalOffset: {x: 0, y: 0, z: 0}
+    punchEffectRotationEuler: {x: 0, y: 0, z: 0}
+    punchEffectScale: 0.000001
+    punchEffectSpeed: 1
+    punchEffectDestroyDelay: 1.25
+    parentPunchEffectToPoint: 0
+    activatePunchEffectChildren: 0
     isDodge: 1
     dodgeBackward: 0
     dodgeLeft: 1
@@ -65429,6 +65487,15 @@ MonoBehaviour:
       cooldownTime: 0
     damage: 10
     damageDelay: 0.15
+    punchEffectPrefab: {fileID: 0}
+    punchEffectPoint: {fileID: 0}
+    punchEffectLocalOffset: {x: 0, y: 0, z: 0}
+    punchEffectRotationEuler: {x: 0, y: 0, z: 0}
+    punchEffectScale: 0.000001
+    punchEffectSpeed: 1
+    punchEffectDestroyDelay: 1.25
+    parentPunchEffectToPoint: 0
+    activatePunchEffectChildren: 0
     isDodge: 0
     dodgeBackward: 0
     dodgeLeft: 0
@@ -65446,6 +65513,15 @@ MonoBehaviour:
       cooldownTime: 0
     damage: 10
     damageDelay: 0.15
+    punchEffectPrefab: {fileID: 0}
+    punchEffectPoint: {fileID: 0}
+    punchEffectLocalOffset: {x: 0, y: 0, z: 0}
+    punchEffectRotationEuler: {x: 0, y: 0, z: 0}
+    punchEffectScale: 0.000001
+    punchEffectSpeed: 1
+    punchEffectDestroyDelay: 1.25
+    parentPunchEffectToPoint: 0
+    activatePunchEffectChildren: 0
     isDodge: 0
     dodgeBackward: 0
     dodgeLeft: 0
@@ -92382,6 +92458,11 @@ Transform:
 Transform:
   m_CorrespondingSourceObject: {fileID: 6448171805470960658, guid: 6a9598db077c94d458cb31ba09a02fbd, type: 3}
   m_PrefabInstance: {fileID: 1039623431}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2054321068 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8333627713332763490, guid: bf9f423f002c8584ba956a41f9f95a77, type: 3}
+  m_PrefabInstance: {fileID: 1235711713}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &2054641898 stripped
 Transform:

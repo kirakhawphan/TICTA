@@ -31,6 +31,17 @@ public struct PlayerAttack
     public float damage; // พลังโจมตี
     public float damageDelay; // ดีเลย์ก่อนพลังชีวิตศัตรูลดลง (ให้ตรงกับจังหวะหมัด/เท้าโดนตัว)
 
+    [Header("Punch Effect Settings")]
+    public GameObject punchEffectPrefab;
+    public Transform punchEffectPoint;
+    public Vector3 punchEffectLocalOffset;
+    public Vector3 punchEffectRotationEuler;
+    [Min(0.000001f)] public float punchEffectScale;
+    [Min(0.01f)] public float punchEffectSpeed;
+    [Min(0.01f)] public float punchEffectDestroyDelay;
+    public bool parentPunchEffectToPoint;
+    public bool activatePunchEffectChildren;
+
     [Header("Dodge Settings")]
     public bool isDodge; // ระบุว่าเป็นท่าหลบหรือไม่ (จะได้รับ I-Frame อมตะระหว่างทำท่านี้)
     public bool dodgeBackward; // หาก true จะหลบไปข้างหลัง, false = forward (เพิ่ม forward lunge)
@@ -83,6 +94,20 @@ public class PlayerMovement : MonoBehaviour
 
     // Property เพื่อให้ภายนอกเช็คสถานะของผู้เล่นได้
     public PlayerState CurrentState => currentState;
+
+    void OnValidate()
+    {
+        if (attacks == null) return;
+
+        for (int i = 0; i < attacks.Length; i++)
+        {
+            PlayerAttack attack = attacks[i];
+            attack.punchEffectScale = Mathf.Max(0.000001f, attack.punchEffectScale);
+            attack.punchEffectSpeed = attack.punchEffectSpeed > 0f ? attack.punchEffectSpeed : 1f;
+            attack.punchEffectDestroyDelay = attack.punchEffectDestroyDelay > 0f ? attack.punchEffectDestroyDelay : 1.25f;
+            attacks[i] = attack;
+        }
+    }
 
     void Awake()
     {
@@ -287,7 +312,7 @@ public class PlayerMovement : MonoBehaviour
                     animator.SetTrigger(attack.triggerName);
                     attack.cooldown.StartCooldown();
                     
-                    StartCoroutine(StationaryPunchCoroutine(attack.triggerName, attack.animStateName));
+                    StartCoroutine(StationaryPunchCoroutine(attack));
                     Debug.LogError($"[Debug] ไม่พบศัตรูในฉาก! (ปล่อยท่า {attack.attackName} อยู่กับที่)");
                 }
             }
@@ -416,6 +441,7 @@ public class PlayerMovement : MonoBehaviour
 
         // รอตามเวลาดีเลย์เพื่อให้มือ/เท้าเอื้อมไปถึงตัวศัตรู แล้วค่อยทำความเสียหาย
         yield return new WaitForSeconds(attack.damageDelay);
+        PlayPunchEffect(attack);
 
         Health enemyHealth = target.GetComponent<Health>();
         if (enemyHealth != null)
@@ -599,25 +625,48 @@ public class PlayerMovement : MonoBehaviour
     /// <summary>
     /// คอรันทีนจัดการสเตทโจมตีกรณีไม่มีศัตรู (ออกท่าอยู่กับที่) จนอนิเมชั่นเสร็จแล้วจึงกลับสู่ Idle
     /// </summary>
-    private IEnumerator StationaryPunchCoroutine(string triggerName, string animStateName)
+    private IEnumerator StationaryPunchCoroutine(PlayerAttack attack)
     {
         yield return null;
-        animator.ResetTrigger(triggerName);
+        animator.ResetTrigger(attack.triggerName);
 
         // รอเข้าสู่ state การทำดาเมจของท่านั้นๆ
-        while (!animator.GetCurrentAnimatorStateInfo(0).IsName(animStateName))
+        while (!animator.GetCurrentAnimatorStateInfo(0).IsName(attack.animStateName))
         {
             yield return null;
         }
 
+        if (attack.damageDelay > 0f)
+        {
+            yield return new WaitForSeconds(attack.damageDelay);
+        }
+
+        PlayPunchEffect(attack);
+
         // รอจนเล่นจบแอนิเมชัน
-        while (animator.GetCurrentAnimatorStateInfo(0).IsName(animStateName))
+        while (animator.GetCurrentAnimatorStateInfo(0).IsName(attack.animStateName))
         {
             yield return null;
         }
 
         // พลิกกลับมาเป็น Idle
         TransitionToState(PlayerState.Idle);
+    }
+
+    private void PlayPunchEffect(PlayerAttack attack)
+    {
+        PunchEffectPlayer.Play(
+            attack.punchEffectPrefab,
+            attack.punchEffectPoint,
+            transform,
+            attack.punchEffectLocalOffset,
+            attack.punchEffectRotationEuler,
+            attack.punchEffectScale,
+            attack.punchEffectSpeed,
+            attack.punchEffectDestroyDelay > 0f ? attack.punchEffectDestroyDelay : 1.25f,
+            attack.parentPunchEffectToPoint,
+            attack.activatePunchEffectChildren,
+            $"PlayerMovement:{attack.attackName}");
     }
 
     private void HandleTakeDamage(float damageAmount)
