@@ -45,6 +45,7 @@ public class EnemyBrain : MonoBehaviour
     private Animator animator;
     private Health health;
     private Rigidbody rb;
+    private StageController stage;
     private PlayerMovement playerMovement; // อ้างอิงเพื่อตรวจ state ของผู้เล่น
     
     // สำหรับล็อคพิกัดยืนของศัตรูไม่ให้เลื่อนไหล
@@ -86,7 +87,9 @@ public class EnemyBrain : MonoBehaviour
         health = GetComponent<Health>();
         enemyCollider = GetComponent<Collider>();
         rb = GetComponent<Rigidbody>();
-        playerMovement = FindFirstObjectByType<PlayerMovement>(); // หา PlayerMovement ในฉาก
+        stage = StageController.GetOrCreateActiveStage();
+        stage.RegisterEnemy(this);
+        playerMovement = ResolvePlayerMovement(); // หา PlayerMovement ในฉาก
 
         if (animator != null)
         {
@@ -374,14 +377,16 @@ public class EnemyBrain : MonoBehaviour
         bool dodgeInterrupted = false;
 
         // บันทึก state ก่อนเข้าลูป เพื่อตรวจการเปลี่ยนแปลง (rising edge)
-        bool wasInDodge = playerMovement != null && playerMovement.CurrentState == PlayerState.Dodge;
+        PlayerMovement targetPlayerMovement = ResolvePlayerMovement();
+        bool wasInDodge = targetPlayerMovement != null && targetPlayerMovement.CurrentState == PlayerState.Dodge;
 
         while (chargeElapsed < chargeDuration)
         {
             transform.position = spawnPosition;
             SmoothLookAtPlayer();
 
-            bool isInDodge = playerMovement != null && playerMovement.CurrentState == PlayerState.Dodge;
+            targetPlayerMovement = ResolvePlayerMovement();
+            bool isInDodge = targetPlayerMovement != null && targetPlayerMovement.CurrentState == PlayerState.Dodge;
 
             // ตรวจ rising edge: Player เพิ่ง *เข้า* Dodge (จาก non-Dodge → Dodge) ระหว่างชาร์จ
             if (!wasInDodge && isInDodge)
@@ -703,8 +708,35 @@ public class EnemyBrain : MonoBehaviour
     }
 
     // ฟังก์ชันค้นหาผู้เล่นที่มี Tag ว่า "Player"
+    private PlayerMovement ResolvePlayerMovement()
+    {
+        if (stage != null && stage.Player != null)
+        {
+            playerMovement = stage.Player;
+            return playerMovement;
+        }
+
+        if (playerMovement == null)
+        {
+            playerMovement = FindFirstObjectByType<PlayerMovement>();
+        }
+
+        return playerMovement;
+    }
+
     private Transform FindPlayer()
     {
+        PlayerMovement resolvedPlayer = ResolvePlayerMovement();
+        if (resolvedPlayer != null)
+        {
+            return resolvedPlayer.transform;
+        }
+
+        if (stage != null && stage.PlayerTransform != null)
+        {
+            return stage.PlayerTransform;
+        }
+
         GameObject player = GameObject.FindWithTag("Player");
         return player != null ? player.transform : null;
     }

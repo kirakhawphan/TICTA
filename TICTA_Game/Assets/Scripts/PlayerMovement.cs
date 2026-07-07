@@ -78,6 +78,7 @@ public class PlayerMovement : MonoBehaviour
 
     private Health health;
     private IFrameController iframeController;
+    private StageController stage;
     private Coroutine stunCoroutine;
 
     // Property เพื่อให้ภายนอกเช็คสถานะของผู้เล่นได้
@@ -87,6 +88,8 @@ public class PlayerMovement : MonoBehaviour
     {
         health = GetComponent<Health>();
         iframeController = FindFirstObjectByType<IFrameController>();
+        stage = StageController.GetOrCreateActiveStage();
+        stage.RegisterPlayer(this);
     }
 
     void OnEnable()
@@ -690,6 +693,11 @@ public class PlayerMovement : MonoBehaviour
     /// </summary>
     private Transform FindEnemy()
     {
+        if (stage != null && stage.EnemyTransform != null)
+        {
+            return stage.EnemyTransform;
+        }
+
         GameObject enemy = GameObject.FindWithTag("Enemy");
         return enemy != null ? enemy.transform : null;
     }

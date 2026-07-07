@@ -20434,6 +20434,7 @@ GameObject:
   m_Component:
   - component: {fileID: 443407162}
   - component: {fileID: 443407161}
+  - component: {fileID: 443407163}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -20471,6 +20472,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &443407163
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 443407160}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f692dea3d7e1c5a40ad026e68d3ab5a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  player: {fileID: 1400009172}
+  playerSpawnPoint: {fileID: 1400009175}
+  enemy: {fileID: 29731159}
+  enemySpawnPoint: {fileID: 29731156}
 --- !u!1001 &443900472
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -65560,6 +65577,11 @@ CapsuleCollider:
   m_Height: 0.015
   m_Direction: 1
   m_Center: {x: 0, y: 0.005, z: 0}
+--- !u!4 &1400009175 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: bf9f423f002c8584ba956a41f9f95a77, type: 3}
+  m_PrefabInstance: {fileID: 1235711713}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1401075713
 PrefabInstance:
   m_ObjectHideFlags: 0
