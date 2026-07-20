@@ -8,6 +8,9 @@ public class RhythmInputGrid : MonoBehaviour
     private const int SlotCount = 9;
 
     [SerializeField] private GameObject[] slots = new GameObject[SlotCount];
+    [SerializeField] private Camera inputCamera;
+    [SerializeField] private LayerMask slotLayerMask = Physics.DefaultRaycastLayers;
+    [SerializeField] private float raycastDistance = 100f;
     [SerializeField] private Color[] pressedColors = new Color[SlotCount]
     {
         Color.red,
@@ -26,6 +29,7 @@ public class RhythmInputGrid : MonoBehaviour
     [SerializeField] private UnityEvent<int> onSlotReleased = new UnityEvent<int>();
 
     private readonly Color[] defaultColors = new Color[SlotCount];
+    private int activeSlotIndex = -1;
 
     public UnityEvent<int> OnSlotPressed => onSlotPressed;
     public UnityEvent<int> OnSlotHeld => onSlotHeld;
@@ -40,30 +44,82 @@ public class RhythmInputGrid : MonoBehaviour
 
     private void Update()
     {
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard == null)
+        UpdateMouseDragInput();
+    }
+
+    private void OnDisable()
+    {
+        ReleaseActiveSlot();
+    }
+
+    private void UpdateMouseDragInput()
+    {
+        Mouse mouse = Mouse.current;
+        if (mouse == null)
+        {
+            ReleaseActiveSlot();
+            return;
+        }
+
+        int hoveredSlotIndex = GetHoveredSlotIndex(mouse.position.ReadValue());
+        if (hoveredSlotIndex != activeSlotIndex)
+        {
+            ReleaseActiveSlot();
+
+            if (IsValidSlotIndex(hoveredSlotIndex))
+            {
+                activeSlotIndex = hoveredSlotIndex;
+                PressSlot(activeSlotIndex);
+            }
+        }
+
+        if (IsValidSlotIndex(activeSlotIndex))
+        {
+            HoldSlot(activeSlotIndex);
+        }
+    }
+
+    private int GetHoveredSlotIndex(Vector2 screenPosition)
+    {
+        Camera rayCamera = inputCamera != null ? inputCamera : Camera.main;
+        if (rayCamera == null)
+        {
+            return -1;
+        }
+
+        Ray ray = rayCamera.ScreenPointToRay(screenPosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray, raycastDistance, slotLayerMask, QueryTriggerInteraction.Collide);
+        int closestSlotIndex = -1;
+        float closestDistance = float.PositiveInfinity;
+
+        for (int hitIndex = 0; hitIndex < hits.Length; hitIndex++)
+        {
+            RaycastHit hit = hits[hitIndex];
+            if (hit.distance >= closestDistance)
+            {
+                continue;
+            }
+
+            if (TryGetSlotIndex(hit.collider.gameObject, out int slotIndex))
+            {
+                closestSlotIndex = slotIndex;
+                closestDistance = hit.distance;
+            }
+        }
+
+        return closestSlotIndex;
+    }
+
+    private void ReleaseActiveSlot()
+    {
+        if (!IsValidSlotIndex(activeSlotIndex))
         {
             return;
         }
 
-        for (int slotIndex = 0; slotIndex < SlotCount; slotIndex++)
-        {
-            if (WasSlotKeyPressed(keyboard, slotIndex))
-            {
-                PressSlot(slotIndex);
-            }
-
-            if (IsSlotKeyPressed(keyboard, slotIndex))
-            {
-                HoldSlot(slotIndex);
-            }
-
-            if (WasSlotKeyReleased(keyboard, slotIndex))
-            {
-                ReleaseSlot(slotIndex);
-            }
-
-        }
+        int releasedSlotIndex = activeSlotIndex;
+        activeSlotIndex = -1;
+        ReleaseSlot(releasedSlotIndex);
     }
 
     public void PressSlot(int slotIndex)
@@ -178,8 +234,7 @@ public class RhythmInputGrid : MonoBehaviour
 
     public bool IsSlotHeld(int slotIndex)
     {
-        Keyboard keyboard = Keyboard.current;
-        return keyboard != null && IsValidSlotIndex(slotIndex) && IsSlotKeyPressed(keyboard, slotIndex);
+        return IsValidSlotIndex(slotIndex) && slotIndex == activeSlotIndex;
     }
 
     private void SetSlotColor(int slotIndex, Color color)
@@ -233,87 +288,6 @@ public class RhythmInputGrid : MonoBehaviour
         return Color.white;
     }
 
-    private static bool WasSlotKeyPressed(Keyboard keyboard, int slotIndex)
-    {
-        switch (slotIndex)
-        {
-            case 0:
-                return keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame;
-            case 1:
-                return keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame;
-            case 2:
-                return keyboard.digit3Key.wasPressedThisFrame || keyboard.numpad3Key.wasPressedThisFrame;
-            case 3:
-                return keyboard.digit4Key.wasPressedThisFrame || keyboard.numpad4Key.wasPressedThisFrame;
-            case 4:
-                return keyboard.digit5Key.wasPressedThisFrame || keyboard.numpad5Key.wasPressedThisFrame;
-            case 5:
-                return keyboard.digit6Key.wasPressedThisFrame || keyboard.numpad6Key.wasPressedThisFrame;
-            case 6:
-                return keyboard.digit7Key.wasPressedThisFrame || keyboard.numpad7Key.wasPressedThisFrame;
-            case 7:
-                return keyboard.digit8Key.wasPressedThisFrame || keyboard.numpad8Key.wasPressedThisFrame;
-            case 8:
-                return keyboard.digit9Key.wasPressedThisFrame || keyboard.numpad9Key.wasPressedThisFrame;
-            default:
-                return false;
-        }
-    }
-
-    private static bool WasSlotKeyReleased(Keyboard keyboard, int slotIndex)
-    {
-        switch (slotIndex)
-        {
-            case 0:
-                return keyboard.digit1Key.wasReleasedThisFrame || keyboard.numpad1Key.wasReleasedThisFrame;
-            case 1:
-                return keyboard.digit2Key.wasReleasedThisFrame || keyboard.numpad2Key.wasReleasedThisFrame;
-            case 2:
-                return keyboard.digit3Key.wasReleasedThisFrame || keyboard.numpad3Key.wasReleasedThisFrame;
-            case 3:
-                return keyboard.digit4Key.wasReleasedThisFrame || keyboard.numpad4Key.wasReleasedThisFrame;
-            case 4:
-                return keyboard.digit5Key.wasReleasedThisFrame || keyboard.numpad5Key.wasReleasedThisFrame;
-            case 5:
-                return keyboard.digit6Key.wasReleasedThisFrame || keyboard.numpad6Key.wasReleasedThisFrame;
-            case 6:
-                return keyboard.digit7Key.wasReleasedThisFrame || keyboard.numpad7Key.wasReleasedThisFrame;
-            case 7:
-                return keyboard.digit8Key.wasReleasedThisFrame || keyboard.numpad8Key.wasReleasedThisFrame;
-            case 8:
-                return keyboard.digit9Key.wasReleasedThisFrame || keyboard.numpad9Key.wasReleasedThisFrame;
-            default:
-                return false;
-        }
-    }
-
-    private static bool IsSlotKeyPressed(Keyboard keyboard, int slotIndex)
-    {
-        switch (slotIndex)
-        {
-            case 0:
-                return keyboard.digit1Key.isPressed || keyboard.numpad1Key.isPressed;
-            case 1:
-                return keyboard.digit2Key.isPressed || keyboard.numpad2Key.isPressed;
-            case 2:
-                return keyboard.digit3Key.isPressed || keyboard.numpad3Key.isPressed;
-            case 3:
-                return keyboard.digit4Key.isPressed || keyboard.numpad4Key.isPressed;
-            case 4:
-                return keyboard.digit5Key.isPressed || keyboard.numpad5Key.isPressed;
-            case 5:
-                return keyboard.digit6Key.isPressed || keyboard.numpad6Key.isPressed;
-            case 6:
-                return keyboard.digit7Key.isPressed || keyboard.numpad7Key.isPressed;
-            case 7:
-                return keyboard.digit8Key.isPressed || keyboard.numpad8Key.isPressed;
-            case 8:
-                return keyboard.digit9Key.isPressed || keyboard.numpad9Key.isPressed;
-            default:
-                return false;
-        }
-    }
-
     private bool ContainsSlot(GameObject slotObject, int slotsToCheck)
     {
         for (int slotIndex = 0; slotIndex < slotsToCheck; slotIndex++)
@@ -342,6 +316,7 @@ public class RhythmInputGrid : MonoBehaviour
     {
         EnsureInspectorArraySizes();
         resetDelay = Mathf.Max(0f, resetDelay);
+        raycastDistance = Mathf.Max(0f, raycastDistance);
     }
 
     private void EnsureInspectorArraySizes()
