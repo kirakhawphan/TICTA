@@ -5,25 +5,36 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class RhythmNote : MonoBehaviour
 {
-    private enum HitInputPhase
-    {
-        Pressed,
-        Held,
-        Released
-    }
-
     [SerializeField] private RhythmInputGrid inputGrid;
+    [SerializeField] private RhythmConductor conductor;
+    [SerializeField] private Transform targetSlot;
+    [SerializeField] private int slotIndex;
+    [SerializeField] private RhythmNoteType noteType = RhythmNoteType.Tap;
+    [SerializeField] private float hitTimeSeconds;
+    [SerializeField] private float durationSeconds;
     [SerializeField] private float moveSpeed = 5f;
-    [SerializeField] private Vector3 moveDirection = Vector3.forward;
-    [SerializeField] private HitInputPhase destroyInputPhase = HitInputPhase.Held;
+    [SerializeField] private Vector3 approachDirection = Vector3.forward;
+    [SerializeField] private float hitWindowSeconds = 0.18f;
+    [SerializeField] private float missWindowSeconds = 0.35f;
 
-    private int overlappingSlotIndex = -1;
-    private bool isDestroying;
+    private float fallbackStartTime;
+    private bool holdStarted;
+    private bool isFinished;
+
+    private float EndTimeSeconds => hitTimeSeconds + Mathf.Max(0f, durationSeconds);
+    private bool UsesConductor => conductor != null;
+    private float SongTimeSeconds => UsesConductor ? conductor.SongTimeSeconds : Time.time - fallbackStartTime;
+
+    public int SlotIndex => slotIndex;
+    public float HitTimeSeconds => hitTimeSeconds;
+    public float DurationSeconds => durationSeconds;
+    public RhythmNoteType NoteType => noteType;
 
     private void Awake()
     {
-        if (inputGrid == null) {
-          inputGrid = FindFirstObjectByType<RhythmInputGrid>();
+        if (inputGrid == null)
+        {
+            inputGrid = FindFirstObjectByType<RhythmInputGrid>();
         }
 
         Collider noteCollider = GetComponent<Collider>();
@@ -36,11 +47,10 @@ public class RhythmNote : MonoBehaviour
 
     private void OnEnable()
     {
+        fallbackStartTime = Time.time;
         if (inputGrid != null)
         {
-            inputGrid.OnSlotPressed.AddListener(HandleSlotPressed);
             inputGrid.OnSlotHeld.AddListener(HandleSlotHeld);
-            inputGrid.OnSlotReleased.AddListener(HandleSlotReleased);
         }
     }
 
@@ -48,102 +58,134 @@ public class RhythmNote : MonoBehaviour
     {
         if (inputGrid != null)
         {
-            inputGrid.OnSlotPressed.RemoveListener(HandleSlotPressed);
             inputGrid.OnSlotHeld.RemoveListener(HandleSlotHeld);
-            inputGrid.OnSlotReleased.RemoveListener(HandleSlotReleased);
         }
     }
 
     private void Update()
     {
-        if (moveDirection == Vector3.zero || Mathf.Approximately(moveSpeed, 0f))
+        UpdatePosition();
+        UpdateHitState();
+    }
+
+    public void Initialize(
+        RhythmInputGrid grid,
+        RhythmConductor songConductor,
+        Transform slotTarget,
+        int targetSlotIndex,
+        RhythmNoteType targetNoteType,
+        float targetHitTimeSeconds,
+        float targetDurationSeconds,
+        float speed,
+        Vector3 movementDirection,
+        float hitWindow)
+    {
+        inputGrid = grid;
+        conductor = songConductor;
+        targetSlot = slotTarget;
+        slotIndex = targetSlotIndex;
+        noteType = targetNoteType;
+        hitTimeSeconds = targetHitTimeSeconds;
+        durationSeconds = Mathf.Max(0f, targetDurationSeconds);
+        moveSpeed = Mathf.Max(0.01f, speed);
+        approachDirection = movementDirection == Vector3.zero ? Vector3.forward : movementDirection.normalized;
+        hitWindowSeconds = Mathf.Max(0.01f, hitWindow);
+        fallbackStartTime = Time.time;
+        holdStarted = false;
+        isFinished = false;
+        UpdatePosition();
+    }
+
+    private void UpdatePosition()
+    {
+        if (targetSlot == null || approachDirection == Vector3.zero)
         {
             return;
         }
 
-        transform.position += moveDirection.normalized * moveSpeed * Time.deltaTime;
+        float secondsUntilHit = hitTimeSeconds - SongTimeSeconds;
+        transform.position = targetSlot.position - approachDirection.normalized * secondsUntilHit * moveSpeed;
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void UpdateHitState()
     {
-        TryStartOverlap(other.gameObject);
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        TryEndOverlap(other.gameObject);
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        TryStartOverlap(collision.gameObject);
-    }
-
-    private void OnCollisionExit(Collision collision)
-    {
-        TryEndOverlap(collision.gameObject);
-    }
-
-    private void HandleSlotPressed(int slotIndex)
-    {
-        TryDestroyForSlot(slotIndex, HitInputPhase.Pressed);
-    }
-
-    private void HandleSlotHeld(int slotIndex)
-    {
-        TryDestroyForSlot(slotIndex, HitInputPhase.Held);
-    }
-
-    private void HandleSlotReleased(int slotIndex)
-    {
-        TryDestroyForSlot(slotIndex, HitInputPhase.Released);
-    }
-
-    private void TryDestroyForSlot(int slotIndex, HitInputPhase inputPhase)
-    {
-        if (isDestroying || slotIndex != overlappingSlotIndex)
+        if (isFinished || inputGrid == null)
         {
             return;
         }
 
-        if (inputPhase != destroyInputPhase)
+        float songTime = SongTimeSeconds;
+        bool slotHeld = inputGrid.IsSlotHeld(slotIndex);
+
+        if (noteType == RhythmNoteType.Tap)
         {
-            return;
-        }
-
-        isDestroying = true;
-        Destroy(gameObject);
-    }
-
-    private void TryStartOverlap(GameObject otherObject)
-    {
-        if (inputGrid == null || isDestroying)
-        {
-            return;
-        }
-
-        if (inputGrid.TryGetSlotIndex(otherObject, out int slotIndex))
-        {
-            overlappingSlotIndex = slotIndex;
-
-            if (inputGrid.IsSlotHeld(slotIndex))
+            if (slotHeld && IsWithinWindow(songTime, hitTimeSeconds))
             {
-                TryDestroyForSlot(slotIndex, HitInputPhase.Held);
+                FinishNote();
+                return;
             }
+
+            if (songTime > hitTimeSeconds + missWindowSeconds)
+            {
+                FinishNote();
+            }
+
+            return;
+        }
+
+        UpdateHoldState(songTime, slotHeld);
+    }
+
+    private void UpdateHoldState(float songTime, bool slotHeld)
+    {
+        if (!holdStarted)
+        {
+            if (slotHeld && IsWithinWindow(songTime, hitTimeSeconds))
+            {
+                holdStarted = true;
+            }
+            else if (songTime > hitTimeSeconds + missWindowSeconds)
+            {
+                FinishNote();
+            }
+
+            return;
+        }
+
+        if (!slotHeld && songTime < EndTimeSeconds)
+        {
+            FinishNote();
+            return;
+        }
+
+        if (songTime >= EndTimeSeconds)
+        {
+            FinishNote();
         }
     }
 
-    private void TryEndOverlap(GameObject otherObject)
+    private void HandleSlotHeld(int heldSlotIndex)
     {
-        if (inputGrid == null || !inputGrid.TryGetSlotIndex(otherObject, out int slotIndex))
+        if (heldSlotIndex == slotIndex)
+        {
+            UpdateHitState();
+        }
+    }
+
+    private bool IsWithinWindow(float songTime, float targetTime)
+    {
+        return Mathf.Abs(songTime - targetTime) <= hitWindowSeconds;
+    }
+
+    private void FinishNote()
+    {
+        if (isFinished)
         {
             return;
         }
 
-        if (slotIndex == overlappingSlotIndex)
-        {
-            overlappingSlotIndex = -1;
-        }
+        isFinished = true;
+        Destroy(gameObject);
     }
 
     private void Reset()
@@ -158,6 +200,10 @@ public class RhythmNote : MonoBehaviour
 
     private void OnValidate()
     {
-        moveSpeed = Mathf.Max(0f, moveSpeed);
+        slotIndex = Mathf.Clamp(slotIndex, 0, RhythmInputGrid.SlotCount - 1);
+        durationSeconds = Mathf.Max(0f, durationSeconds);
+        moveSpeed = Mathf.Max(0.01f, moveSpeed);
+        hitWindowSeconds = Mathf.Max(0.01f, hitWindowSeconds);
+        missWindowSeconds = Mathf.Max(hitWindowSeconds, missWindowSeconds);
     }
 }

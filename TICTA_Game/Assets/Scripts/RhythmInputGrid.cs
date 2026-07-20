@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 public class RhythmInputGrid : MonoBehaviour
 {
-    private const int SlotCount = 9;
+    public const int SlotCount = 9;
 
     [SerializeField] private GameObject[] slots = new GameObject[SlotCount];
     [SerializeField] private Camera inputCamera;
@@ -34,6 +34,7 @@ public class RhythmInputGrid : MonoBehaviour
     public UnityEvent<int> OnSlotPressed => onSlotPressed;
     public UnityEvent<int> OnSlotHeld => onSlotHeld;
     public UnityEvent<int> OnSlotReleased => onSlotReleased;
+    public int ActiveSlotIndex => activeSlotIndex;
 
     private void Awake()
     {
@@ -230,6 +231,18 @@ public class RhythmInputGrid : MonoBehaviour
     {
         slotIndex = FindSlotIndex(slotObject);
         return IsValidSlotIndex(slotIndex);
+    }
+
+    public bool TryGetSlotTransform(int slotIndex, out Transform slotTransform)
+    {
+        slotTransform = null;
+        if (!IsValidSlotIndex(slotIndex) || slots[slotIndex] == null)
+        {
+            return false;
+        }
+
+        slotTransform = slots[slotIndex].transform;
+        return true;
     }
 
     public bool IsSlotHeld(int slotIndex)

@@ -192,16 +192,21 @@ MonoBehaviour:
   - {fileID: 1244451871}
   - {fileID: 2042918784}
   - {fileID: 990243032}
+  inputCamera: {fileID: 0}
+  slotLayerMask:
+    serializedVersion: 2
+    m_Bits: 51
+  raycastDistance: 100
   pressedColors:
-  - {r: 1, g: 0, b: 0, a: 1}
-  - {r: 1, g: 0.5, b: 0, a: 1}
-  - {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  - {r: 0, g: 1, b: 0, a: 1}
-  - {r: 0, g: 1, b: 1, a: 1}
-  - {r: 0, g: 0, b: 1, a: 1}
-  - {r: 0.5, g: 0, b: 1, a: 1}
-  - {r: 1, g: 0, b: 1, a: 1}
-  - {r: 1, g: 1, b: 1, a: 1}
+  - {r: 1, g: 0, b: 0, a: 0.39215687}
+  - {r: 1, g: 0.5, b: 0, a: 0.39215687}
+  - {r: 1, g: 0.92156863, b: 0.015686275, a: 0.39215687}
+  - {r: 0, g: 1, b: 0, a: 0.39215687}
+  - {r: 0, g: 1, b: 1, a: 0.39215687}
+  - {r: 0, g: 0, b: 1, a: 0.39215687}
+  - {r: 0.5, g: 0, b: 1, a: 0.39215687}
+  - {r: 1, g: 0, b: 1, a: 0.39215687}
+  - {r: 1, g: 1, b: 1, a: 0.39215687}
   resetDelay: 0.08
   onSlotPressed:
     m_PersistentCalls:
@@ -816,9 +821,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inputGrid: {fileID: 294666262}
+  conductor: {fileID: 0}
+  targetSlot: {fileID: 0}
+  slotIndex: 0
+  noteType: 0
+  hitTimeSeconds: 0
+  durationSeconds: 0
   moveSpeed: 5
-  moveDirection: {x: 0, y: 0, z: 1}
-  destroyInputPhase: 1
+  approachDirection: {x: 0, y: 0, z: 1}
+  hitWindowSeconds: 0.18
+  missWindowSeconds: 0.35
 --- !u!54 &1210421576
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1225,9 +1237,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inputGrid: {fileID: 294666262}
+  conductor: {fileID: 0}
+  targetSlot: {fileID: 0}
+  slotIndex: 0
+  noteType: 0
+  hitTimeSeconds: 0
+  durationSeconds: 0
   moveSpeed: 5
-  moveDirection: {x: 0, y: 0, z: 1}
-  destroyInputPhase: 1
+  approachDirection: {x: 0, y: 0, z: 1}
+  hitWindowSeconds: 0.18
+  missWindowSeconds: 0.35
 --- !u!54 &1460606487
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1486,9 +1505,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inputGrid: {fileID: 294666262}
+  conductor: {fileID: 0}
+  targetSlot: {fileID: 0}
+  slotIndex: 0
+  noteType: 0
+  hitTimeSeconds: 0
+  durationSeconds: 0
   moveSpeed: 5
-  moveDirection: {x: 0, y: 0, z: 1}
-  destroyInputPhase: 1
+  approachDirection: {x: 0, y: 0, z: 1}
+  hitWindowSeconds: 0.18
+  missWindowSeconds: 0.35
 --- !u!54 &1682988779
 Rigidbody:
   m_ObjectHideFlags: 0
