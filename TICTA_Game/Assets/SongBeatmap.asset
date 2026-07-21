@@ -31,3 +31,7 @@ MonoBehaviour:
     startBeat: 31.25
     durationBeats: 4.5
     noteType: 1
+  - slotIndex: 8
+    startBeat: 38
+    durationBeats: 4.5
+    noteType: 1

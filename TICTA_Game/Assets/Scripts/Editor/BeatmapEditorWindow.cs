@@ -175,21 +175,21 @@ public class BeatmapEditorWindow : EditorWindow
 
         if (recordSlotIndex < 0)
         {
-            if (GUILayout.Button("Hold Start", GUILayout.Width(92f)))
+            if (GUILayout.Button("Catch Start", GUILayout.Width(92f)))
             {
                 recordSlotIndex = nextSlot;
                 recordStartBeat = beatmap.SnapBeat(beatmap.SecondsToBeat(playheadSeconds));
             }
         }
-        else if (GUILayout.Button("Hold End", GUILayout.Width(92f)))
+        else if (GUILayout.Button("Catch End", GUILayout.Width(92f)))
         {
             float endBeat = beatmap.SnapBeat(beatmap.SecondsToBeat(playheadSeconds));
-            AddNote(recordSlotIndex, recordStartBeat, Mathf.Max(1f / beatmap.SnapDivision, endBeat - recordStartBeat), RhythmNoteType.Hold);
+            AddNote(recordSlotIndex, recordStartBeat, Mathf.Max(1f / beatmap.SnapDivision, endBeat - recordStartBeat), RhythmNoteType.Catch);
             recordSlotIndex = -1;
         }
 
         EditorGUILayout.LabelField(recordSlotIndex >= 0
-            ? $"Manual hold slot {recordSlotIndex}"
+            ? $"Manual catch slot {recordSlotIndex}"
             : "In Play Mode, Record captures the hovered RhythmInputGrid slot automatically.");
         EditorGUILayout.EndHorizontal();
     }
@@ -248,14 +248,14 @@ public class BeatmapEditorWindow : EditorWindow
         {
             BeatmapNote note = notes[i];
             Rect rect = GetNoteRect(note);
-            Color color = note.noteType == RhythmNoteType.Hold ? new Color(0.1f, 0.7f, 1f) : new Color(1f, 0.75f, 0.2f);
+            Color color = note.noteType == RhythmNoteType.Catch ? new Color(0.1f, 0.7f, 1f) : new Color(1f, 0.75f, 0.2f);
             if (i == selectedNoteIndex)
             {
                 color = Color.Lerp(color, Color.white, 0.35f);
             }
 
             EditorGUI.DrawRect(rect, color);
-            GUI.Label(rect, note.noteType == RhythmNoteType.Hold ? $"H {note.durationBeats:0.##}" : "T", EditorStyles.centeredGreyMiniLabel);
+            GUI.Label(rect, note.noteType == RhythmNoteType.Catch ? $"C {note.durationBeats:0.##}" : "T", EditorStyles.centeredGreyMiniLabel);
         }
     }
 
@@ -435,7 +435,7 @@ public class BeatmapEditorWindow : EditorWindow
             {
                 SelectNote(noteIndex);
                 Rect noteRect = GetNoteRect(beatmap.EditableNotes[noteIndex]);
-                if (Mathf.Abs(current.mousePosition.x - noteRect.xMax) < 8f && beatmap.EditableNotes[noteIndex].noteType == RhythmNoteType.Hold)
+                if (Mathf.Abs(current.mousePosition.x - noteRect.xMax) < 8f && beatmap.EditableNotes[noteIndex].noteType == RhythmNoteType.Catch)
                 {
                     resizingNoteIndex = noteIndex;
                     resizeOriginalDuration = beatmap.EditableNotes[noteIndex].durationBeats;
@@ -510,11 +510,11 @@ public class BeatmapEditorWindow : EditorWindow
         note.slotIndex = EditorGUILayout.IntSlider("Slot", note.slotIndex, 0, RhythmInputGrid.SlotCount - 1);
         note.noteType = (RhythmNoteType)EditorGUILayout.EnumPopup("Type", note.noteType);
         note.startBeat = EditorGUILayout.FloatField("Start Beat", note.startBeat);
-        note.durationBeats = note.noteType == RhythmNoteType.Hold ? EditorGUILayout.FloatField("Duration Beats", note.durationBeats) : 0f;
+        note.durationBeats = note.noteType == RhythmNoteType.Catch ? EditorGUILayout.FloatField("Duration Beats", note.durationBeats) : 0f;
         if (EditorGUI.EndChangeCheck())
         {
             note.startBeat = beatmap.SnapBeat(note.startBeat);
-            note.durationBeats = note.noteType == RhythmNoteType.Hold ? Mathf.Max(1f / beatmap.SnapDivision, beatmap.SnapBeat(note.durationBeats)) : 0f;
+            note.durationBeats = note.noteType == RhythmNoteType.Catch ? Mathf.Max(1f / beatmap.SnapDivision, beatmap.SnapBeat(note.durationBeats)) : 0f;
             MarkDirty();
         }
 
@@ -656,9 +656,9 @@ public class BeatmapEditorWindow : EditorWindow
 
         float endBeat = beatmap.SnapBeat(beatmap.SecondsToBeat(playheadSeconds));
         float duration = Mathf.Max(0f, endBeat - liveRecordStartBeat);
-        float minimumHoldBeats = 1f / beatmap.SnapDivision;
-        RhythmNoteType noteType = duration >= minimumHoldBeats * 2f ? RhythmNoteType.Hold : RhythmNoteType.Tap;
-        AddNote(liveRecordSlotIndex, liveRecordStartBeat, noteType == RhythmNoteType.Hold ? duration : 0f, noteType);
+        float minimumCatchBeats = 1f / beatmap.SnapDivision;
+        RhythmNoteType noteType = duration >= minimumCatchBeats * 2f ? RhythmNoteType.Catch : RhythmNoteType.Tap;
+        AddNote(liveRecordSlotIndex, liveRecordStartBeat, noteType == RhythmNoteType.Catch ? duration : 0f, noteType);
         liveRecordSlotIndex = -1;
     }
 
@@ -675,7 +675,7 @@ public class BeatmapEditorWindow : EditorWindow
         {
             slotIndex = Mathf.Clamp(slotIndex, 0, RhythmInputGrid.SlotCount - 1),
             startBeat = beatmap.SnapBeat(startBeat),
-            durationBeats = noteType == RhythmNoteType.Hold ? Mathf.Max(1f / beatmap.SnapDivision, beatmap.SnapBeat(durationBeats)) : 0f,
+            durationBeats = noteType == RhythmNoteType.Catch ? Mathf.Max(1f / beatmap.SnapDivision, beatmap.SnapBeat(durationBeats)) : 0f,
             noteType = noteType
         };
 
@@ -706,7 +706,7 @@ public class BeatmapEditorWindow : EditorWindow
         Undo.RecordObject(beatmap, "Resize Beatmap Note");
         float endBeat = beatmap.SnapBeat(XToBeat(mousePosition.x));
         note.durationBeats = Mathf.Max(1f / beatmap.SnapDivision, endBeat - note.startBeat);
-        note.noteType = RhythmNoteType.Hold;
+        note.noteType = RhythmNoteType.Catch;
         MarkDirty();
     }
 
@@ -759,7 +759,7 @@ public class BeatmapEditorWindow : EditorWindow
     private Rect GetNoteRect(BeatmapNote note)
     {
         float x = BeatToX(note.startBeat);
-        float width = note.noteType == RhythmNoteType.Hold
+        float width = note.noteType == RhythmNoteType.Catch
             ? Mathf.Max(18f, note.durationBeats * pixelsPerBeat)
             : 18f;
         float y = 28f + note.slotIndex * LaneHeight + (LaneHeight - NoteHeight) * 0.5f;

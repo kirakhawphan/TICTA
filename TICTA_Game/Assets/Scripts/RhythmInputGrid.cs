@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
@@ -29,6 +30,7 @@ public class RhythmInputGrid : MonoBehaviour
     [SerializeField] private UnityEvent<int> onSlotReleased = new UnityEvent<int>();
 
     private readonly Color[] defaultColors = new Color[SlotCount];
+    private readonly System.Collections.Generic.List<RaycastResult> uiRaycastResults = new System.Collections.Generic.List<RaycastResult>();
     private int activeSlotIndex = -1;
 
     public UnityEvent<int> OnSlotPressed => onSlotPressed;
@@ -82,6 +84,11 @@ public class RhythmInputGrid : MonoBehaviour
 
     private int GetHoveredSlotIndex(Vector2 screenPosition)
     {
+        if (TryGetHoveredUiSlotIndex(screenPosition, out int uiSlotIndex))
+        {
+            return uiSlotIndex;
+        }
+
         Camera rayCamera = inputCamera != null ? inputCamera : Camera.main;
         if (rayCamera == null)
         {
@@ -109,6 +116,34 @@ public class RhythmInputGrid : MonoBehaviour
         }
 
         return closestSlotIndex;
+    }
+
+    private bool TryGetHoveredUiSlotIndex(Vector2 screenPosition, out int slotIndex)
+    {
+        slotIndex = -1;
+        if (EventSystem.current == null)
+        {
+            return false;
+        }
+
+        PointerEventData pointerEventData = new PointerEventData(EventSystem.current)
+        {
+            position = screenPosition
+        };
+
+        uiRaycastResults.Clear();
+        EventSystem.current.RaycastAll(pointerEventData, uiRaycastResults);
+
+        for (int resultIndex = 0; resultIndex < uiRaycastResults.Count; resultIndex++)
+        {
+            GameObject hitObject = uiRaycastResults[resultIndex].gameObject;
+            if (TryGetSlotIndex(hitObject, out slotIndex))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ReleaseActiveSlot()

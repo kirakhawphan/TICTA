@@ -133,16 +133,16 @@ public class RhythmNote : MonoBehaviour
             return;
         }
 
-        UpdateHoldState(songTime, slotHeld);
+        UpdateCatchState(songTime, slotHeld);
     }
 
-    private void UpdateHoldState(float songTime, bool slotHeld)
+    private void UpdateCatchState(float songTime, bool slotHeld)
     {
         if (!holdStarted)
         {
             if (slotHeld && IsWithinWindow(songTime, hitTimeSeconds))
             {
-                holdStarted = true;
+                FinishNote();
             }
             else if (songTime > hitTimeSeconds + missWindowSeconds)
             {
@@ -150,17 +150,6 @@ public class RhythmNote : MonoBehaviour
             }
 
             return;
-        }
-
-        if (!slotHeld && songTime < EndTimeSeconds)
-        {
-            FinishNote();
-            return;
-        }
-
-        if (songTime >= EndTimeSeconds)
-        {
-            FinishNote();
         }
     }
 

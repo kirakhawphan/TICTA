@@ -5,7 +5,7 @@ using UnityEngine;
 public enum RhythmNoteType
 {
     Tap,
-    Hold
+    Catch
 }
 
 [Serializable]
