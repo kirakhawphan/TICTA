@@ -5,7 +5,8 @@ using UnityEngine;
 public enum RhythmNoteType
 {
     Tap,
-    Catch
+    Catch,
+    Hold
 }
 
 [Serializable]
@@ -129,7 +130,7 @@ public class SongBeatmap : ScriptableObject
             note.slotIndex = Mathf.Clamp(note.slotIndex, 0, RhythmInputGrid.SlotCount - 1);
             note.startBeat = Mathf.Max(0f, note.startBeat);
             note.durationBeats = Mathf.Max(0f, note.durationBeats);
-            if (note.noteType == RhythmNoteType.Tap)
+            if (note.noteType != RhythmNoteType.Hold)
             {
                 note.durationBeats = 0f;
             }

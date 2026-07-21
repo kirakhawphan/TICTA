@@ -142,7 +142,7 @@ public class RhythmNoteSpawner : MonoBehaviour
 
     private float GetNoteDurationSeconds(BeatmapNote note)
     {
-        if (note == null || note.noteType == RhythmNoteType.Tap)
+        if (note == null || note.noteType != RhythmNoteType.Hold)
         {
             return 0f;
         }

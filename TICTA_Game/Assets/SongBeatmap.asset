@@ -21,17 +21,17 @@ MonoBehaviour:
   notes:
   - slotIndex: 0
     startBeat: 4
-    durationBeats: 4.5
-    noteType: 1
+    durationBeats: 5
+    noteType: 2
   - slotIndex: 8
     startBeat: 17.25
-    durationBeats: 4.5
-    noteType: 1
+    durationBeats: 5
+    noteType: 2
   - slotIndex: 5
     startBeat: 31.25
-    durationBeats: 4.5
-    noteType: 1
-  - slotIndex: 8
-    startBeat: 38
-    durationBeats: 4.5
-    noteType: 1
+    durationBeats: 5
+    noteType: 2
+  - slotIndex: 2
+    startBeat: 45
+    durationBeats: 5
+    noteType: 2

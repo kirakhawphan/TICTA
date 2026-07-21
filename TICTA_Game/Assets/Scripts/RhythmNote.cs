@@ -20,6 +20,8 @@ public class RhythmNote : MonoBehaviour
     private float fallbackStartTime;
     private bool holdStarted;
     private bool isFinished;
+    private Vector3 baseScale;
+    private float holdVisualLength;
 
     private float EndTimeSeconds => hitTimeSeconds + Mathf.Max(0f, durationSeconds);
     private bool UsesConductor => conductor != null;
@@ -32,6 +34,8 @@ public class RhythmNote : MonoBehaviour
 
     private void Awake()
     {
+        baseScale = transform.localScale;
+
         if (inputGrid == null)
         {
             inputGrid = FindFirstObjectByType<RhythmInputGrid>();
@@ -93,6 +97,8 @@ public class RhythmNote : MonoBehaviour
         fallbackStartTime = Time.time;
         holdStarted = false;
         isFinished = false;
+        holdVisualLength = GetHoldVisibleLength(SongTimeSeconds);
+        ApplyHoldVisualLength(holdVisualLength);
         UpdatePosition();
     }
 
@@ -103,8 +109,19 @@ public class RhythmNote : MonoBehaviour
             return;
         }
 
-        float secondsUntilHit = hitTimeSeconds - SongTimeSeconds;
-        transform.position = targetSlot.position - approachDirection.normalized * secondsUntilHit * moveSpeed;
+        float songTime = SongTimeSeconds;
+        float secondsUntilHit = hitTimeSeconds - songTime;
+        float approachOffset = secondsUntilHit * moveSpeed;
+
+        if (noteType == RhythmNoteType.Hold)
+        {
+            holdVisualLength = GetHoldVisibleLength(songTime);
+            ApplyHoldVisualLength(holdVisualLength);
+            approachOffset = Mathf.Max(0f, approachOffset);
+        }
+
+        float centerOffset = noteType == RhythmNoteType.Hold ? holdVisualLength * 0.5f : 0f;
+        transform.position = targetSlot.position - approachDirection.normalized * (approachOffset + centerOffset);
     }
 
     private void UpdateHitState()
@@ -117,7 +134,7 @@ public class RhythmNote : MonoBehaviour
         float songTime = SongTimeSeconds;
         bool slotHeld = inputGrid.IsSlotHeld(slotIndex);
 
-        if (noteType == RhythmNoteType.Tap)
+        if (noteType == RhythmNoteType.Tap || noteType == RhythmNoteType.Catch)
         {
             if (slotHeld && IsWithinWindow(songTime, hitTimeSeconds))
             {
@@ -133,16 +150,16 @@ public class RhythmNote : MonoBehaviour
             return;
         }
 
-        UpdateCatchState(songTime, slotHeld);
+        UpdateHoldState(songTime, slotHeld);
     }
 
-    private void UpdateCatchState(float songTime, bool slotHeld)
+    private void UpdateHoldState(float songTime, bool slotHeld)
     {
         if (!holdStarted)
         {
             if (slotHeld && IsWithinWindow(songTime, hitTimeSeconds))
             {
-                FinishNote();
+                holdStarted = true;
             }
             else if (songTime > hitTimeSeconds + missWindowSeconds)
             {
@@ -151,6 +168,68 @@ public class RhythmNote : MonoBehaviour
 
             return;
         }
+
+        if (!slotHeld && songTime < EndTimeSeconds)
+        {
+            FinishNote();
+            return;
+        }
+
+        if (songTime >= EndTimeSeconds)
+        {
+            FinishNote();
+        }
+    }
+
+    private float GetHoldVisibleLength(float songTime)
+    {
+        if (noteType != RhythmNoteType.Hold)
+        {
+            return 0f;
+        }
+
+        if (songTime < hitTimeSeconds)
+        {
+            return durationSeconds * moveSpeed;
+        }
+
+        return Mathf.Max(0f, EndTimeSeconds - songTime) * moveSpeed;
+    }
+
+    private void ApplyHoldVisualLength(float visibleLength)
+    {
+        if (baseScale == Vector3.zero)
+        {
+            baseScale = transform.localScale;
+        }
+
+        transform.localScale = baseScale;
+
+        if (noteType != RhythmNoteType.Hold || visibleLength <= 0f)
+        {
+            return;
+        }
+
+        Vector3 absoluteDirection = new Vector3(
+            Mathf.Abs(approachDirection.x),
+            Mathf.Abs(approachDirection.y),
+            Mathf.Abs(approachDirection.z));
+
+        Vector3 scale = baseScale;
+        if (absoluteDirection.x >= absoluteDirection.y && absoluteDirection.x >= absoluteDirection.z)
+        {
+            scale.x = Mathf.Max(0.01f, baseScale.x + visibleLength);
+        }
+        else if (absoluteDirection.y >= absoluteDirection.x && absoluteDirection.y >= absoluteDirection.z)
+        {
+            scale.y = Mathf.Max(0.01f, baseScale.y + visibleLength);
+        }
+        else
+        {
+            scale.z = Mathf.Max(0.01f, baseScale.z + visibleLength);
+        }
+
+        transform.localScale = scale;
     }
 
     private void HandleSlotHeld(int heldSlotIndex)
