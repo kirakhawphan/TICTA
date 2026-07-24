@@ -16,6 +16,7 @@ public class RhythmNote : MonoBehaviour
     [SerializeField] private Vector3 approachDirection = Vector3.forward;
     [SerializeField] private float hitWindowSeconds = 0.18f;
     [SerializeField] private float missWindowSeconds = 0.35f;
+    [SerializeField] private RhythmScoreManager scoreManager;
 
     private float fallbackStartTime;
     private bool holdStarted;
@@ -41,6 +42,11 @@ public class RhythmNote : MonoBehaviour
             inputGrid = FindFirstObjectByType<RhythmInputGrid>();
         }
 
+        if (scoreManager == null)
+        {
+            scoreManager = RhythmScoreManager.Instance;
+        }
+
         Collider noteCollider = GetComponent<Collider>();
         noteCollider.isTrigger = true;
 
@@ -55,6 +61,11 @@ public class RhythmNote : MonoBehaviour
         if (inputGrid != null)
         {
             inputGrid.OnSlotHeld.AddListener(HandleSlotHeld);
+        }
+
+        if (scoreManager == null)
+        {
+            scoreManager = RhythmScoreManager.Instance;
         }
     }
 
@@ -138,13 +149,13 @@ public class RhythmNote : MonoBehaviour
         {
             if (slotHeld && IsWithinWindow(songTime, hitTimeSeconds))
             {
-                FinishNote();
+                FinishNote(true);
                 return;
             }
 
             if (songTime > hitTimeSeconds + missWindowSeconds)
             {
-                FinishNote();
+                FinishNote(false);
             }
 
             return;
@@ -163,7 +174,7 @@ public class RhythmNote : MonoBehaviour
             }
             else if (songTime > hitTimeSeconds + missWindowSeconds)
             {
-                FinishNote();
+                FinishNote(false);
             }
 
             return;
@@ -171,13 +182,13 @@ public class RhythmNote : MonoBehaviour
 
         if (!slotHeld && songTime < EndTimeSeconds)
         {
-            FinishNote();
+            FinishNote(false);
             return;
         }
 
         if (songTime >= EndTimeSeconds)
         {
-            FinishNote();
+            FinishNote(true);
         }
     }
 
@@ -245,7 +256,7 @@ public class RhythmNote : MonoBehaviour
         return Mathf.Abs(songTime - targetTime) <= hitWindowSeconds;
     }
 
-    private void FinishNote()
+    private void FinishNote(bool wasHit)
     {
         if (isFinished)
         {
@@ -253,6 +264,20 @@ public class RhythmNote : MonoBehaviour
         }
 
         isFinished = true;
+        if (scoreManager == null)
+        {
+            scoreManager = RhythmScoreManager.Instance;
+        }
+
+        if (wasHit)
+        {
+            scoreManager.RegisterHit(noteType);
+        }
+        else
+        {
+            scoreManager.RegisterMiss();
+        }
+
         Destroy(gameObject);
     }
 
