@@ -23,6 +23,8 @@ public class RhythmNote : MonoBehaviour
     private bool isFinished;
     private Vector3 baseScale;
     private float holdVisualLength;
+    private float nextHoldComboTime;
+    private int awardedHoldScore;
 
     private float EndTimeSeconds => hitTimeSeconds + Mathf.Max(0f, durationSeconds);
     private bool UsesConductor => conductor != null;
@@ -108,6 +110,8 @@ public class RhythmNote : MonoBehaviour
         fallbackStartTime = Time.time;
         holdStarted = false;
         isFinished = false;
+        nextHoldComboTime = 0f;
+        awardedHoldScore = 0;
         holdVisualLength = GetHoldVisibleLength(SongTimeSeconds);
         ApplyHoldVisualLength(holdVisualLength);
         UpdatePosition();
@@ -149,6 +153,7 @@ public class RhythmNote : MonoBehaviour
         {
             if (slotHeld && IsWithinWindow(songTime, hitTimeSeconds))
             {
+                PlaySlotHitNeon();
                 FinishNote(true);
                 return;
             }
@@ -171,6 +176,8 @@ public class RhythmNote : MonoBehaviour
             if (slotHeld && IsWithinWindow(songTime, hitTimeSeconds))
             {
                 holdStarted = true;
+                nextHoldComboTime = hitTimeSeconds + GetHoldTickInterval();
+                PlaySlotHitNeon();
             }
             else if (songTime > hitTimeSeconds + missWindowSeconds)
             {
@@ -186,10 +193,71 @@ public class RhythmNote : MonoBehaviour
             return;
         }
 
+        PlaySlotHitNeon();
+        RegisterHoldScore(songTime);
+        RegisterHoldComboTicks(songTime);
+
         if (songTime >= EndTimeSeconds)
         {
-            FinishNote(true);
+            FinishNote(true, false);
         }
+    }
+
+    private void RegisterHoldScore(float songTime)
+    {
+        if (scoreManager == null)
+        {
+            scoreManager = RhythmScoreManager.Instance;
+        }
+
+        int targetScore = Mathf.RoundToInt(durationSeconds * scoreManager.HoldScorePerSecond);
+        if (targetScore <= 0 || durationSeconds <= 0f)
+        {
+            return;
+        }
+
+        float cappedSongTime = Mathf.Min(songTime, EndTimeSeconds);
+        float progress = Mathf.InverseLerp(hitTimeSeconds, EndTimeSeconds, cappedSongTime);
+        int targetScoreAtProgress = Mathf.FloorToInt(targetScore * progress);
+        if (songTime >= EndTimeSeconds)
+        {
+            targetScoreAtProgress = targetScore;
+        }
+
+        int scoreToAward = targetScoreAtProgress - awardedHoldScore;
+        if (scoreToAward <= 0)
+        {
+            return;
+        }
+
+        awardedHoldScore += scoreToAward;
+        scoreManager.RegisterHoldScore(scoreToAward);
+    }
+
+    private void RegisterHoldComboTicks(float songTime)
+    {
+        if (scoreManager == null)
+        {
+            scoreManager = RhythmScoreManager.Instance;
+        }
+
+        float interval = GetHoldTickInterval();
+        float cappedSongTime = Mathf.Min(songTime, EndTimeSeconds);
+        while (nextHoldComboTime <= cappedSongTime)
+        {
+            scoreManager.RegisterHoldTick();
+            nextHoldComboTime += interval;
+        }
+    }
+
+    private float GetHoldTickInterval()
+    {
+        if (scoreManager == null)
+        {
+            scoreManager = RhythmScoreManager.Instance;
+        }
+
+        return Mathf.Max(0.01f, scoreManager.HoldTickIntervalSeconds);
     }
 
     private float GetHoldVisibleLength(float songTime)
@@ -256,7 +324,15 @@ public class RhythmNote : MonoBehaviour
         return Mathf.Abs(songTime - targetTime) <= hitWindowSeconds;
     }
 
-    private void FinishNote(bool wasHit)
+    private void PlaySlotHitNeon()
+    {
+        if (inputGrid != null)
+        {
+            inputGrid.PlayHitNeon(slotIndex);
+        }
+    }
+
+    private void FinishNote(bool wasHit, bool awardScore = true)
     {
         if (isFinished)
         {
@@ -269,11 +345,11 @@ public class RhythmNote : MonoBehaviour
             scoreManager = RhythmScoreManager.Instance;
         }
 
-        if (wasHit)
+        if (wasHit && awardScore)
         {
             scoreManager.RegisterHit(noteType);
         }
-        else
+        else if (!wasHit)
         {
             scoreManager.RegisterMiss();
         }

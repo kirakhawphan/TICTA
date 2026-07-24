@@ -25,12 +25,21 @@ public class RhythmInputGrid : MonoBehaviour
         Color.white
     };
     [SerializeField] private float resetDelay = 0.08f;
+    [SerializeField] private Color hitNeonColor = new Color(0.15f, 1f, 0.95f, 1f);
+    [SerializeField] private Vector2 hitNeonThickness = new Vector2(5f, -5f);
+    [SerializeField] private float hitNeonWorldWidth = 0.08f;
+    [SerializeField] private float hitNeonWorldPadding = 0.08f;
+    [SerializeField] private float hitNeonDurationSeconds = 0.16f;
     [SerializeField] private UnityEvent<int> onSlotPressed = new UnityEvent<int>();
     [SerializeField] private UnityEvent<int> onSlotHeld = new UnityEvent<int>();
     [SerializeField] private UnityEvent<int> onSlotReleased = new UnityEvent<int>();
 
     private readonly Color[] defaultColors = new Color[SlotCount];
+    private readonly Outline[] hitNeonOutlines = new Outline[SlotCount];
+    private readonly LineRenderer[] hitNeonLines = new LineRenderer[SlotCount];
+    private readonly float[] hitNeonTimers = new float[SlotCount];
     private readonly System.Collections.Generic.List<RaycastResult> uiRaycastResults = new System.Collections.Generic.List<RaycastResult>();
+    private Material hitNeonLineMaterial;
     private int activeSlotIndex = -1;
 
     public UnityEvent<int> OnSlotPressed => onSlotPressed;
@@ -48,6 +57,7 @@ public class RhythmInputGrid : MonoBehaviour
     private void Update()
     {
         UpdateMouseDragInput();
+        UpdateHitNeonEffects();
     }
 
     private void OnDisable()
@@ -285,6 +295,37 @@ public class RhythmInputGrid : MonoBehaviour
         return IsValidSlotIndex(slotIndex) && slotIndex == activeSlotIndex;
     }
 
+    public void PlayHitNeon(int slotIndex)
+    {
+        if (!IsValidSlotIndex(slotIndex))
+        {
+            return;
+        }
+
+        bool playedEffect = false;
+        Outline outline = GetOrCreateHitNeonOutline(slotIndex);
+        if (outline != null)
+        {
+            outline.enabled = true;
+            outline.effectColor = hitNeonColor;
+            outline.effectDistance = hitNeonThickness;
+            playedEffect = true;
+        }
+
+        LineRenderer lineRenderer = GetOrCreateHitNeonLine(slotIndex);
+        if (lineRenderer != null)
+        {
+            PositionHitNeonLine(slotIndex, lineRenderer);
+            lineRenderer.enabled = true;
+            playedEffect = true;
+        }
+
+        if (playedEffect)
+        {
+            hitNeonTimers[slotIndex] = Mathf.Max(hitNeonTimers[slotIndex], hitNeonDurationSeconds);
+        }
+    }
+
     private void SetSlotColor(int slotIndex, Color color)
     {
         GameObject slot = slots[slotIndex];
@@ -308,6 +349,209 @@ public class RhythmInputGrid : MonoBehaviour
         if (slot.TryGetComponent(out Renderer renderer))
         {
             renderer.material.color = color;
+        }
+    }
+
+    private void UpdateHitNeonEffects()
+    {
+        for (int slotIndex = 0; slotIndex < SlotCount; slotIndex++)
+        {
+            if (hitNeonTimers[slotIndex] <= 0f)
+            {
+                continue;
+            }
+
+            hitNeonTimers[slotIndex] -= Time.deltaTime;
+            if (hitNeonTimers[slotIndex] > 0f)
+            {
+                continue;
+            }
+
+            hitNeonTimers[slotIndex] = 0f;
+            if (hitNeonOutlines[slotIndex] != null)
+            {
+                hitNeonOutlines[slotIndex].enabled = false;
+            }
+
+            if (hitNeonLines[slotIndex] != null)
+            {
+                hitNeonLines[slotIndex].enabled = false;
+            }
+        }
+    }
+
+    private Outline GetOrCreateHitNeonOutline(int slotIndex)
+    {
+        if (hitNeonOutlines[slotIndex] != null)
+        {
+            return hitNeonOutlines[slotIndex];
+        }
+
+        GameObject slot = slots[slotIndex];
+        if (slot == null || !slot.TryGetComponent(out Graphic graphic))
+        {
+            return null;
+        }
+
+        Outline outline = slot.GetComponent<Outline>();
+        if (outline == null)
+        {
+            outline = slot.AddComponent<Outline>();
+        }
+
+        outline.enabled = false;
+        outline.useGraphicAlpha = false;
+        outline.effectColor = hitNeonColor;
+        outline.effectDistance = hitNeonThickness;
+        hitNeonOutlines[slotIndex] = outline;
+        return outline;
+    }
+
+    private LineRenderer GetOrCreateHitNeonLine(int slotIndex)
+    {
+        if (hitNeonLines[slotIndex] != null)
+        {
+            return hitNeonLines[slotIndex];
+        }
+
+        GameObject slot = slots[slotIndex];
+        if (slot == null || GetSlotVisualRenderer(slot) == null)
+        {
+            return null;
+        }
+
+        GameObject lineObject = new GameObject("Hit Neon Border");
+        lineObject.transform.SetParent(slot.transform, false);
+
+        LineRenderer lineRenderer = lineObject.AddComponent<LineRenderer>();
+        lineRenderer.enabled = false;
+        lineRenderer.loop = true;
+        lineRenderer.useWorldSpace = true;
+        lineRenderer.positionCount = 4;
+        lineRenderer.widthMultiplier = hitNeonWorldWidth;
+        lineRenderer.numCornerVertices = 4;
+        lineRenderer.numCapVertices = 4;
+        lineRenderer.startColor = hitNeonColor;
+        lineRenderer.endColor = hitNeonColor;
+        lineRenderer.material = GetHitNeonLineMaterial();
+
+        hitNeonLines[slotIndex] = lineRenderer;
+        return lineRenderer;
+    }
+
+    private void PositionHitNeonLine(int slotIndex, LineRenderer lineRenderer)
+    {
+        Renderer slotRenderer = GetSlotVisualRenderer(slots[slotIndex]);
+        if (slotRenderer == null)
+        {
+            return;
+        }
+
+        Bounds bounds = slotRenderer.bounds;
+        Vector3 center = bounds.center;
+        Vector3 extents = bounds.extents + Vector3.one * hitNeonWorldPadding;
+        Camera rayCamera = inputCamera != null ? inputCamera : Camera.main;
+
+        int flatAxis = GetSmallestAxis(extents);
+        Vector3 normal = GetAxisVector(flatAxis);
+        if (rayCamera != null && Vector3.Dot(normal, rayCamera.transform.position - center) < 0f)
+        {
+            normal = -normal;
+        }
+
+        Vector3 axisA = GetAxisVector((flatAxis + 1) % 3);
+        Vector3 axisB = GetAxisVector((flatAxis + 2) % 3);
+        float halfA = GetAxisValue(extents, (flatAxis + 1) % 3);
+        float halfB = GetAxisValue(extents, (flatAxis + 2) % 3);
+        Vector3 faceCenter = center + normal * (GetAxisValue(extents, flatAxis) + 0.01f);
+
+        lineRenderer.widthMultiplier = hitNeonWorldWidth;
+        lineRenderer.startColor = hitNeonColor;
+        lineRenderer.endColor = hitNeonColor;
+        lineRenderer.SetPosition(0, faceCenter - axisA * halfA - axisB * halfB);
+        lineRenderer.SetPosition(1, faceCenter + axisA * halfA - axisB * halfB);
+        lineRenderer.SetPosition(2, faceCenter + axisA * halfA + axisB * halfB);
+        lineRenderer.SetPosition(3, faceCenter - axisA * halfA + axisB * halfB);
+    }
+
+    private Material GetHitNeonLineMaterial()
+    {
+        if (hitNeonLineMaterial != null)
+        {
+            return hitNeonLineMaterial;
+        }
+
+        Shader shader = Shader.Find("Sprites/Default");
+        if (shader == null)
+        {
+            shader = Shader.Find("Universal Render Pipeline/Unlit");
+        }
+
+        if (shader == null)
+        {
+            shader = Shader.Find("Unlit/Color");
+        }
+
+        hitNeonLineMaterial = new Material(shader);
+        hitNeonLineMaterial.color = hitNeonColor;
+        return hitNeonLineMaterial;
+    }
+
+    private static Renderer GetSlotVisualRenderer(GameObject slot)
+    {
+        if (slot == null)
+        {
+            return null;
+        }
+
+        Renderer[] renderers = slot.GetComponentsInChildren<Renderer>();
+        for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
+        {
+            Renderer renderer = renderers[rendererIndex];
+            if (renderer is LineRenderer)
+            {
+                continue;
+            }
+
+            return renderer;
+        }
+
+        return null;
+    }
+
+    private static int GetSmallestAxis(Vector3 vector)
+    {
+        if (vector.x <= vector.y && vector.x <= vector.z)
+        {
+            return 0;
+        }
+
+        return vector.y <= vector.z ? 1 : 2;
+    }
+
+    private static Vector3 GetAxisVector(int axis)
+    {
+        switch (axis)
+        {
+            case 0:
+                return Vector3.right;
+            case 1:
+                return Vector3.up;
+            default:
+                return Vector3.forward;
+        }
+    }
+
+    private static float GetAxisValue(Vector3 vector, int axis)
+    {
+        switch (axis)
+        {
+            case 0:
+                return vector.x;
+            case 1:
+                return vector.y;
+            default:
+                return vector.z;
         }
     }
 
@@ -365,6 +609,9 @@ public class RhythmInputGrid : MonoBehaviour
         EnsureInspectorArraySizes();
         resetDelay = Mathf.Max(0f, resetDelay);
         raycastDistance = Mathf.Max(0f, raycastDistance);
+        hitNeonWorldWidth = Mathf.Max(0.001f, hitNeonWorldWidth);
+        hitNeonWorldPadding = Mathf.Max(0f, hitNeonWorldPadding);
+        hitNeonDurationSeconds = Mathf.Max(0.01f, hitNeonDurationSeconds);
     }
 
     private void EnsureInspectorArraySizes()
