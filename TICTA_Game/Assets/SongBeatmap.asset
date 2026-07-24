@@ -24,14 +24,22 @@ MonoBehaviour:
     durationBeats: 5
     noteType: 2
   - slotIndex: 8
-    startBeat: 17.25
+    startBeat: 10.75
     durationBeats: 5
     noteType: 2
-  - slotIndex: 5
-    startBeat: 31.25
+  - slotIndex: 4
+    startBeat: 18
     durationBeats: 5
     noteType: 2
   - slotIndex: 2
+    startBeat: 28.75
+    durationBeats: 5
+    noteType: 2
+  - slotIndex: 7
+    startBeat: 37.5
+    durationBeats: 5
+    noteType: 2
+  - slotIndex: 3
     startBeat: 45
     durationBeats: 5
     noteType: 2

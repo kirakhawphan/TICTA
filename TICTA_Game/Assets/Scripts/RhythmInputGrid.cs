@@ -30,6 +30,8 @@ public class RhythmInputGrid : MonoBehaviour
     [SerializeField] private float hitNeonWorldWidth = 0.08f;
     [SerializeField] private float hitNeonWorldPadding = 0.08f;
     [SerializeField] private float hitNeonDurationSeconds = 0.16f;
+    [SerializeField] private float hitNeonShimmerSpeed = 18f;
+    [SerializeField, Range(0f, 1f)] private float hitNeonShimmerAmount = 0.45f;
     [SerializeField] private UnityEvent<int> onSlotPressed = new UnityEvent<int>();
     [SerializeField] private UnityEvent<int> onSlotHeld = new UnityEvent<int>();
     [SerializeField] private UnityEvent<int> onSlotReleased = new UnityEvent<int>();
@@ -361,6 +363,7 @@ public class RhythmInputGrid : MonoBehaviour
                 continue;
             }
 
+            AnimateHitNeonEffect(slotIndex);
             hitNeonTimers[slotIndex] -= Time.deltaTime;
             if (hitNeonTimers[slotIndex] > 0f)
             {
@@ -377,6 +380,29 @@ public class RhythmInputGrid : MonoBehaviour
             {
                 hitNeonLines[slotIndex].enabled = false;
             }
+        }
+    }
+
+    private void AnimateHitNeonEffect(int slotIndex)
+    {
+        float shimmer = 0.5f + 0.5f * Mathf.Sin(
+            (Time.time * hitNeonShimmerSpeed) + slotIndex * 0.7f);
+        float brightness = Mathf.Lerp(1f - hitNeonShimmerAmount, 1f, shimmer);
+        Color shimmerColor = hitNeonColor;
+        shimmerColor.a *= brightness;
+
+        if (hitNeonOutlines[slotIndex] != null)
+        {
+            hitNeonOutlines[slotIndex].effectColor = shimmerColor;
+            hitNeonOutlines[slotIndex].effectDistance = hitNeonThickness * brightness;
+        }
+
+        if (hitNeonLines[slotIndex] != null)
+        {
+            LineRenderer lineRenderer = hitNeonLines[slotIndex];
+            lineRenderer.startColor = shimmerColor;
+            lineRenderer.endColor = shimmerColor;
+            lineRenderer.widthMultiplier = hitNeonWorldWidth * brightness;
         }
     }
 
@@ -447,31 +473,43 @@ public class RhythmInputGrid : MonoBehaviour
             return;
         }
 
-        Bounds bounds = slotRenderer.bounds;
-        Vector3 center = bounds.center;
-        Vector3 extents = bounds.extents + Vector3.one * hitNeonWorldPadding;
+        Transform visualTransform = slotRenderer.transform;
+        Bounds localBounds = slotRenderer.localBounds;
+        Vector3 localCenter = localBounds.center;
+        Vector3 localExtents = localBounds.extents;
         Camera rayCamera = inputCamera != null ? inputCamera : Camera.main;
 
-        int flatAxis = GetSmallestAxis(extents);
-        Vector3 normal = GetAxisVector(flatAxis);
-        if (rayCamera != null && Vector3.Dot(normal, rayCamera.transform.position - center) < 0f)
-        {
-            normal = -normal;
-        }
+        Vector3 center = visualTransform.TransformPoint(localCenter);
+        Vector3 cameraDirection = rayCamera != null
+            ? rayCamera.transform.position - center
+            : Vector3.forward;
 
-        Vector3 axisA = GetAxisVector((flatAxis + 1) % 3);
-        Vector3 axisB = GetAxisVector((flatAxis + 2) % 3);
-        float halfA = GetAxisValue(extents, (flatAxis + 1) % 3);
-        float halfB = GetAxisValue(extents, (flatAxis + 2) % 3);
-        Vector3 faceCenter = center + normal * (GetAxisValue(extents, flatAxis) + 0.01f);
+        Vector3[] worldAxes =
+        {
+            visualTransform.right,
+            visualTransform.up,
+            visualTransform.forward
+        };
+        int faceAxis = GetLargestFacingAxis(worldAxes, cameraDirection);
+        float faceSign = Vector3.Dot(worldAxes[faceAxis], cameraDirection) >= 0f ? 1f : -1f;
+        Vector3 localNormal = GetAxisVector(faceAxis) * faceSign;
+        Vector3 normal = worldAxes[faceAxis] * faceSign;
+
+        int axisAIndex = (faceAxis + 1) % 3;
+        int axisBIndex = (faceAxis + 2) % 3;
+        Vector3 localAxisA = GetAxisVector(axisAIndex);
+        Vector3 localAxisB = GetAxisVector(axisBIndex);
+        float halfA = GetAxisValue(localExtents, axisAIndex);
+        float halfB = GetAxisValue(localExtents, axisBIndex);
+        Vector3 localFaceCenter = localCenter + localNormal * GetAxisValue(localExtents, faceAxis);
 
         lineRenderer.widthMultiplier = hitNeonWorldWidth;
         lineRenderer.startColor = hitNeonColor;
         lineRenderer.endColor = hitNeonColor;
-        lineRenderer.SetPosition(0, faceCenter - axisA * halfA - axisB * halfB);
-        lineRenderer.SetPosition(1, faceCenter + axisA * halfA - axisB * halfB);
-        lineRenderer.SetPosition(2, faceCenter + axisA * halfA + axisB * halfB);
-        lineRenderer.SetPosition(3, faceCenter - axisA * halfA + axisB * halfB);
+        lineRenderer.SetPosition(0, visualTransform.TransformPoint(localFaceCenter - localAxisA * halfA - localAxisB * halfB) + normal * hitNeonWorldPadding);
+        lineRenderer.SetPosition(1, visualTransform.TransformPoint(localFaceCenter + localAxisA * halfA - localAxisB * halfB) + normal * hitNeonWorldPadding);
+        lineRenderer.SetPosition(2, visualTransform.TransformPoint(localFaceCenter + localAxisA * halfA + localAxisB * halfB) + normal * hitNeonWorldPadding);
+        lineRenderer.SetPosition(3, visualTransform.TransformPoint(localFaceCenter - localAxisA * halfA + localAxisB * halfB) + normal * hitNeonWorldPadding);
     }
 
     private Material GetHitNeonLineMaterial()
@@ -519,14 +557,27 @@ public class RhythmInputGrid : MonoBehaviour
         return null;
     }
 
-    private static int GetSmallestAxis(Vector3 vector)
+    private static int GetLargestFacingAxis(Vector3[] axes, Vector3 direction)
     {
-        if (vector.x <= vector.y && vector.x <= vector.z)
+        if (direction.sqrMagnitude <= Mathf.Epsilon)
         {
             return 0;
         }
 
-        return vector.y <= vector.z ? 1 : 2;
+        direction.Normalize();
+        int bestAxis = 0;
+        float bestAlignment = Mathf.Abs(Vector3.Dot(axes[0], direction));
+        for (int axisIndex = 1; axisIndex < axes.Length; axisIndex++)
+        {
+            float alignment = Mathf.Abs(Vector3.Dot(axes[axisIndex], direction));
+            if (alignment > bestAlignment)
+            {
+                bestAxis = axisIndex;
+                bestAlignment = alignment;
+            }
+        }
+
+        return bestAxis;
     }
 
     private static Vector3 GetAxisVector(int axis)
@@ -612,6 +663,8 @@ public class RhythmInputGrid : MonoBehaviour
         hitNeonWorldWidth = Mathf.Max(0.001f, hitNeonWorldWidth);
         hitNeonWorldPadding = Mathf.Max(0f, hitNeonWorldPadding);
         hitNeonDurationSeconds = Mathf.Max(0.01f, hitNeonDurationSeconds);
+        hitNeonShimmerSpeed = Mathf.Max(0f, hitNeonShimmerSpeed);
+        hitNeonShimmerAmount = Mathf.Clamp01(hitNeonShimmerAmount);
     }
 
     private void EnsureInspectorArraySizes()
