@@ -43,3 +43,39 @@ MonoBehaviour:
     startBeat: 45
     durationBeats: 5
     noteType: 2
+  - slotIndex: 4
+    startBeat: 56
+    durationBeats: 5
+    noteType: 2
+  - slotIndex: 1
+    startBeat: 65.75
+    durationBeats: 5
+    noteType: 2
+  - slotIndex: 7
+    startBeat: 72
+    durationBeats: 5
+    noteType: 2
+  - slotIndex: 1
+    startBeat: 82.75
+    durationBeats: 3
+    noteType: 2
+  - slotIndex: 5
+    startBeat: 89.75
+    durationBeats: 3
+    noteType: 2
+  - slotIndex: 3
+    startBeat: 110.5
+    durationBeats: 3
+    noteType: 2
+  - slotIndex: 6
+    startBeat: 117
+    durationBeats: 3
+    noteType: 2
+  - slotIndex: 0
+    startBeat: 124
+    durationBeats: 3
+    noteType: 2
+  - slotIndex: 6
+    startBeat: 131
+    durationBeats: 3
+    noteType: 2
