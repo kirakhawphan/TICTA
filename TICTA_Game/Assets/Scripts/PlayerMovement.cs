@@ -65,8 +65,21 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private string stunTriggerName = "Stun";
     
     // ตัวแปรล็อกพิกัดเริ่มต้น เพื่อแก้ไขปัญหาตัวละครตำแหน่งไม่นิ่ง หรือเลื่อนไหล (Drift) เองจากอนิเมชั่น
-    private Vector3 spawnPosition;
-    private Quaternion spawnRotation;
+    // จุดยืนดั้งเดิมที่จับตอน Start (ค่าคงที่ ไม่เปลี่ยน)
+    private Vector3 spawnAnchor;
+    private Quaternion spawnRotationAnchor;
+
+    /// <summary>ระยะเลื่อนจากภายนอก (PoseBodyDriver) ให้ตัวละครขยับตามตัวผู้เล่นจริง — world space</summary>
+    public Vector3 ExternalBodyOffset { get; set; }
+
+    /// <summary>องศาเอียงลำตัวจากภายนอก (PoseBodyDriver)</summary>
+    public float ExternalBodyTilt { get; set; }
+
+    // จุดอ้างอิงที่ "ขยับได้" — โค้ดเดิมทุกจุดอ่านตัวนี้เหมือนเดิม ทั้ง lunge/dodge/return
+    // จึงตามตัวผู้เล่นไปเองโดยไม่ต้องแก้ coroutine ใดๆ
+    private Vector3 spawnPosition => spawnAnchor + ExternalBodyOffset;
+    private Quaternion spawnRotation =>
+        spawnRotationAnchor * Quaternion.AngleAxis(-ExternalBodyTilt, Vector3.forward);
 
     // ตัวแปรเก็บ Collider ของตัวผู้เล่นเอง
     private Collider playerCollider;
@@ -143,8 +156,8 @@ public class PlayerMovement : MonoBehaviour
         }
 
         // บันทึกตำแหน่งและองศาการหันตั้งต้นตอนเริ่มเกมไว้ เพื่อใช้ล็อคพิกัดให้มั่นคง 100%
-        spawnPosition = transform.position;
-        spawnRotation = transform.rotation;
+        spawnAnchor = transform.position;
+        spawnRotationAnchor = transform.rotation;
 
         // ดึงคอมโพเนนต์ Collider หรือ CharacterController ของผู้เล่นเองมาเก็บไว้
         playerCollider = GetComponent<Collider>();
@@ -270,6 +283,42 @@ public class PlayerMovement : MonoBehaviour
     }
 
     // ฟังก์ชันช่วยดักจับว่ามีการกดอินพุตของท่าโจมตีนั้นๆ หรือไม่
+    /// <summary>
+    /// สั่งออกท่าจากภายนอก (PoseUdpReceiver ที่รับท่าจากกล้อง) โดยอ้างอิงจาก attackName
+    /// เงื่อนไขเหมือนกดปุ่มทุกอย่าง คือต้องอยู่ Idle และ cooldown พร้อม — คืน true เมื่อออกท่าได้จริง
+    /// </summary>
+    public bool TryExecuteAttackByName(string attackName)
+    {
+        if (string.IsNullOrEmpty(attackName) || attacks == null || attacks.Length == 0)
+        {
+            return false;
+        }
+
+        if (currentState != PlayerState.Idle)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < attacks.Length; i++)
+        {
+            if (!string.Equals(attacks[i].attackName, attackName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!attacks[i].cooldown.IsReady)
+            {
+                return false;
+            }
+
+            ExecuteAttack(attacks[i]);
+            return true;
+        }
+
+        Debug.LogWarning($"[PlayerMovement] ไม่พบท่าชื่อ '{attackName}' ใน attacks[]");
+        return false;
+    }
+
     private bool CheckAttackInput(PlayerAttack attack)
     {
         if (attack.useMouseLeftClick)

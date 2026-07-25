@@ -96865,6 +96865,118 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6a9598db077c94d458cb31ba09a02fbd, type: 3}
+--- !u!1 &2141143370
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2141143372}
+  - component: {fileID: 2141143371}
+  - component: {fileID: 2141143373}
+  m_Layer: 0
+  m_Name: 'PoseReceiver '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2141143371
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2141143370}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ab356d34c0cf1b4088cfa4b2107e8c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  port: 5005
+  bridgeHost: 
+  playerMovement: {fileID: 0}
+  logEvents: 1
+  attackBindings:
+  - move: punch_left
+    attackName: PunchL
+  - move: punch_right
+    attackName: PunchR
+  - move: elbow_left
+    attackName: ElbowL
+  - move: elbow_right
+    attackName: ElbowR
+  - move: kick_left
+    attackName: DodgingL
+  - move: kick_right
+    attackName: DodgingR
+--- !u!4 &2141143372
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2141143370}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2141143373
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2141143370}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5eeef6727b65091469c05589cc7d208d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  receiver: {fileID: 0}
+  playerMovement: {fileID: 0}
+  target: {fileID: 0}
+  deadZone: 0.08
+  responseCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 1
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 1
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  maxLateralOffset: 2
+  lateralAxis: {x: 1, y: 0, z: 0}
+  useVertical: 0
+  maxVerticalOffset: 0.5
+  smoothTime: 0.12
+  applyLeanTilt: 1
+  leanTiltRatio: 0.8
+  maxLeanTilt: 25
+  holdOnTrackingLoss: 1
+  logFirstState: 1
 --- !u!4 &2141613808 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6448171805470960658, guid: 6a9598db077c94d458cb31ba09a02fbd, type: 3}
@@ -97226,3 +97338,4 @@ SceneRoots:
   - {fileID: 1113459676}
   - {fileID: 602082758}
   - {fileID: 443407162}
+  - {fileID: 2141143372}
