@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 using UnityEngine.UI;
 
 public class RhythmInputGrid : MonoBehaviour
@@ -58,7 +59,7 @@ public class RhythmInputGrid : MonoBehaviour
 
     private void Update()
     {
-        UpdateMouseDragInput();
+        UpdatePointerInput();
         UpdateHitNeonEffects();
     }
 
@@ -67,16 +68,15 @@ public class RhythmInputGrid : MonoBehaviour
         ReleaseActiveSlot();
     }
 
-    private void UpdateMouseDragInput()
+    private void UpdatePointerInput()
     {
-        Mouse mouse = Mouse.current;
-        if (mouse == null)
+        if (!TryGetActivePointerPosition(out Vector2 pointerPosition))
         {
             ReleaseActiveSlot();
             return;
         }
 
-        int hoveredSlotIndex = GetHoveredSlotIndex(mouse.position.ReadValue());
+        int hoveredSlotIndex = GetHoveredSlotIndex(pointerPosition);
         if (hoveredSlotIndex != activeSlotIndex)
         {
             ReleaseActiveSlot();
@@ -92,6 +92,41 @@ public class RhythmInputGrid : MonoBehaviour
         {
             HoldSlot(activeSlotIndex);
         }
+    }
+
+    private bool TryGetActivePointerPosition(out Vector2 pointerPosition)
+    {
+        Touchscreen touchscreen = Touchscreen.current;
+        if (touchscreen != null)
+        {
+            for (int touchIndex = 0; touchIndex < touchscreen.touches.Count; touchIndex++)
+            {
+                TouchControl touch = touchscreen.touches[touchIndex];
+                if (!touch.press.isPressed)
+                {
+                    continue;
+                }
+
+                pointerPosition = touch.position.ReadValue();
+                return true;
+            }
+
+            if (Application.isMobilePlatform)
+            {
+                pointerPosition = default;
+                return false;
+            }
+        }
+
+        Mouse mouse = Mouse.current;
+        if (mouse == null)
+        {
+            pointerPosition = default;
+            return false;
+        }
+
+        pointerPosition = mouse.position.ReadValue();
+        return true;
     }
 
     private int GetHoveredSlotIndex(Vector2 screenPosition)
