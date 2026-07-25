@@ -79,3 +79,99 @@ MonoBehaviour:
     startBeat: 131
     durationBeats: 3
     noteType: 2
+  - slotIndex: 2
+    startBeat: 137.5
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 4
+    startBeat: 145
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 2
+    startBeat: 151.25
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 8
+    startBeat: 158.5
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 3
+    startBeat: 165.25
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 0
+    startBeat: 172.5
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 4
+    startBeat: 179.5
+    durationBeats: 5
+    noteType: 2
+  - slotIndex: 7
+    startBeat: 192.25
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 3
+    startBeat: 199.25
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 5
+    startBeat: 206
+    durationBeats: 7
+    noteType: 2
+  - slotIndex: 0
+    startBeat: 220
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 6
+    startBeat: 227
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 8
+    startBeat: 233.5
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 2
+    startBeat: 240.5
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 0
+    startBeat: 247.75
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 6
+    startBeat: 254.25
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 0
+    startBeat: 260.5
+    durationBeats: 3
+    noteType: 2
+  - slotIndex: 5
+    startBeat: 269.25
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 8
+    startBeat: 276
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 4
+    startBeat: 281.75
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 1
+    startBeat: 288
+    durationBeats: 2
+    noteType: 2
+  - slotIndex: 4
+    startBeat: 295.25
+    durationBeats: 0
+    noteType: 0
+  - slotIndex: 7
+    startBeat: 301.75
+    durationBeats: 5
+    noteType: 2
+  - slotIndex: 4
+    startBeat: 295.25
+    durationBeats: 2
+    noteType: 2
